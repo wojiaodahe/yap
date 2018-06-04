@@ -1,0 +1,51 @@
+  31  | 30 | 29 | 28 | 27...8  | 7 | 6 | 5 | 4  | 3  | 2  | 1  | 0  |
+  N   | Z  | C	| V  | reserve | I | F | T | M4 | M3 | M2 | M1 | M0 |
+
+  N  	Negative/less than
+  Z  	Zero
+  C  	Carry/Borow/Extend
+  V  	Overflow
+  I  	IRQ disable 
+  F  	FIQ disable
+  T  	State bit
+  M0-M4 Mode bits
+一:条件码标志
+N:当两个补码表示的带符号数进行运算时，N=1表示运算结果为负数;N=0表示结果为正数或0
+Z:Z=1表示运算结果为0,Z=0表示运算结果非0
+C:有4种方法设置C的值
+  1:加法运算(包括CMP),当运算结果产生了进位时(无符号数溢出),C=1,否则C=0
+  2:减法运算(包括CMP),当运算时产生了错位时(无符号数溢出),C=0,否则C=1
+  3:对于包含移位操作的非加/减运算指令,C为移出值的最后一位
+  4:对于其他非加/减运算指令,C的值通常不变
+V:有2种方法设置V的值 
+  1:对于加减法运算指令,当操作数和运算结果为二进制的补码表示的带符号数时,V=1表示符号位溢出
+  2:对于其他的非加减运算指令,V的值通常不变
+ARM状态下绝大多数的指令都是条件执行的，在THUMB状态下,仅有分支指令是条件执行的
+
+二:控制位
+CPSR的低8位(包括I,F,T,和M[4:0])称为控制位，发生异常时这些位可以被改变,如果处理特权模式,这些位可以由程序修改
+中断禁止位I,F:置1时禁止IRQ和FIQ中断禁 
+T标志位:反应当前处理器运行状态,为1时程序运行在THUMB状态
+运行模式位M[4:0]:这几位是模式位,决定了处理器的运行模式,如下如所示
+
+M[4:0]   处理器模式  	ARM模式访问的寄存器   	THUMB模式可访问的寄存器
+
+0b10000  用户模式	 	PC,CPSR,R0-R14			PC,CPSR,R0-R7,LR,SP 
+
+0b10001  FIQ模式		PC,CPSR,SPSR_fiq,
+		 				R14_fiq-R8_fiq,R0-R7	PC,CPSR,SPSR_fiq,LR_fiq,SP_fiq,R0-R7
+
+0b10010  IRQ模式		PC,CPSR,SPSR_irq,
+		 				R14_irq-R13_irq,R0-R12  PC,CPSR,SPSR_irq,LR_irq,SP_irq,R0-R7
+
+0b10011  管理模式		PC,CPSR,SPSR_svc,
+		 				R14_svc-R13_svc,R0-R12  PC,CPSR,SPSR_svc,LR_svc,SP_svc,R0-R7
+
+0b10111  中止模式		PC,CPSR,SPSR_abt,
+		 				R14_abt-R13_abt,R0-R12  PC,CPSR,SPSR_abt,LR_abt,SP_abt,R0-R7
+
+0b11011  未定义模式		PC,CPSR,SPSR_und,
+		 				R14_und-R13_und,R0-R12  PC,CPSR,SPSR_und,LR_und,SP_udn,R0-R7
+
+0b11111  系统模式		PC,CPSR,R0-R14			PC,CPSR,LR,R0-R7
+		 				
