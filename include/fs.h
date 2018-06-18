@@ -71,6 +71,7 @@ struct file
     struct file             *f_prev;
     struct inode            *f_inode;
     struct file_operations *f_op;
+    void *private_data;
 };
 
 

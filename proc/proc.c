@@ -189,19 +189,34 @@ int OS_IDLE_PROCESS(void *arg)
 
 void process_sleep(unsigned int sec)
 {
+	disable_schedule();
+
 	current->p_flags |= PROCESS_SLEEP;
 	current->sleep_time = sec * HZ;
+
+	enable_schedule();
 	OS_Sched();
 }
 
+void process_msleep(unsigned int m)
+{
+	disable_schedule();
+
+	current->p_flags |= PROCESS_SLEEP;
+	current->sleep_time = m * HZ / 1000;
+	if (!current->sleep_time)
+		current->sleep_time = 1;
+
+	enable_schedule();
+	OS_Sched();
+}
 
 static unsigned int OS_TICKS = 0;
 void OS_Clock_Tick(void)
 {
-	static int t = 0;
-	pcb_t *tmp;
+    pcb_t *tmp;
 
-    //disable_irq();
+    disable_irq();
     //
     OS_TICKS++;
     //
@@ -218,13 +233,6 @@ void OS_Clock_Tick(void)
 		tmp = tmp->next;
 	}
 
-	t++;
-	if (t == 100)
-	{
-		printk("111111111111111111\n");
-		t = 0;
-	}
-	
     if (current->ticks > 0)	
         current->ticks--;
    
@@ -235,7 +243,7 @@ void OS_Clock_Tick(void)
 
     OS_IntSched();
 
-   //enable_irq();
+    enable_irq();
 }
 
 unsigned int OS_Get_Kernel_Ticks()
@@ -252,7 +260,10 @@ void panic()
 extern int test_user_syscall_open(void *argc);
 extern int  test_nand(void *p);
 extern int  test_get_ticks(void *p);
-extern int  test_open_led(void *p);
+extern int  test_open_led0(void *p);
+extern int  test_open_led1(void *p);
+extern int  test_open_led2(void *p);
+extern int  test_open_led3(void *p);
 extern int test_user_syscall_printf(void *argc);
 
 int OS_INIT_PROCESS(void *argv)
@@ -263,7 +274,8 @@ int OS_INIT_PROCESS(void *argv)
 	int fd_stderr;
 
 	timer_init();
-	
+
+	disable_irq();
 	fd_stdout = sys_open("/dev/stdout", 0, 0);
 	if (fd_stdout < 0)
 	{
@@ -300,12 +312,18 @@ int OS_INIT_PROCESS(void *argv)
 		panic();
 	}
 	
-	led_module_init(); 
-   // create_pthread(test_get_ticks, (void *)1, 10);
-    create_pthread(test_open_led, (void *)2, 25);
-    //create_pthread(test_nand, (void *)2, 20);
-    create_pthread(test_user_syscall_open, (void *)2, 20);
-    create_pthread(test_user_syscall_printf, (void *)2, 20);
+	//led_module_init();
+	led_driver_init();
+	led_device_init();
+	//create_pthread(test_get_ticks, (void *)1, 10);
+	create_pthread(test_open_led0, (void *)2, 25);
+	create_pthread(test_open_led1, (void *)2, 25);
+	create_pthread(test_open_led2, (void *)2, 25);
+	create_pthread(test_open_led3, (void *)2, 25);
+	create_pthread(test_nand, (void *)2, 20);
+	create_pthread(test_user_syscall_open, (void *)2, 20);
+	create_pthread(test_user_syscall_printf, (void *)2, 20);
+	enable_irq();
 #endif
 	while (1)
 	{
@@ -347,6 +365,14 @@ int OS_Init(void)
 		printk("create_std_device error\n");
 		panic();
 	}
+
+	bus_list_init();
+    ret = platform_bus_init();
+    if (ret < 0)
+    {
+    	printk("platform bus init failed");
+    	panic();
+    }
 
 	ret = create_pthread(OS_INIT_PROCESS, (void *)0, OS_INIT_PROCESS_PID);
 	if (ret < 0)

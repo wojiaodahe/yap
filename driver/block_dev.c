@@ -48,7 +48,7 @@ struct blk_dev_struct *alloc_blk_dev_struct()
 
     for (blk = 0; blk < NR_BLKDEV; blk++) 
     {
-        if (!blk_devs[blk].device)
+        if (!blk_devs[blk].fops)
             return &blk_devs[blk];
     }
     return NULL;
@@ -59,7 +59,7 @@ struct blk_dev_struct *find_blk_dev(dev_t major)
     int dev;
     for (dev = 0; dev < NR_BLKDEV; dev++)
     {
-        if (blk_devs[dev].device && (blk_devs[dev].device->dev == major))
+        if (blk_devs[dev].dev == major)
             return &blk_devs[dev];
     }
 
@@ -180,37 +180,26 @@ struct file_operations *get_blkfops(unsigned int major)
 		return NULL;
     
     blk_dev = find_blk_dev(major);
-    if (!blk_dev || !blk_dev->device)
+    if (!blk_dev)
         return NULL;
 
-    return blk_dev->device->fops;
+    return blk_dev->fops;
 }
 
 int register_blkdev(unsigned int major, const char * name, struct file_operations *fops)
 {
     struct blk_dev_struct *blk_dev;
-    struct device *dev;
 
-
-	if (major >= MAX_BLKDEV)
+    if (major >= MAX_BLKDEV)
 		return -EINVAL;
-
-    dev = alloc_device_struct();
-    if (!dev)
-        return -ENOMEM;
 
     blk_dev = alloc_blk_dev_struct();
     if (!blk_dev)
-    {
-        put_device_struct(dev);
         return -ENOMEM;
-    }
 
-
-    blk_dev->device = dev;
-    dev->name = name;
-    dev->dev  = major;
-    dev->fops = fops;
+    blk_dev->name = name;
+    blk_dev->dev  = major;
+    blk_dev->fops = fops;
 
 	return 0;
 }
@@ -256,7 +245,7 @@ int blkdev_open(struct inode * inode, struct file * filp)
     if (!blk_dev)
 		return -ENODEV;
 
-	filp->f_op = blk_dev->device->fops;
+	filp->f_op = blk_dev->fops;
 	if (filp->f_op->open)
 		return filp->f_op->open(inode,filp);
 	return 0;

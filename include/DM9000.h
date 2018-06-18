@@ -71,6 +71,8 @@
 
 #define Printf printk
 
+#define DM9000_PKT_READY        0x01
+
 typedef unsigned char U8;
 typedef unsigned short U16;
 typedef unsigned int U32;
@@ -110,7 +112,7 @@ typedef struct ip_hdr			//以太网头部+IP首部结构
 }IP_HDR;
 
 
-void DM9000_init(void);
+//void DM9000_init(struct netif *);
 void DM9000_sendPcket(U8 *datas, U32 length);
 void PrintfDM9000Reg(void);
 void Print_HostMAC(void);

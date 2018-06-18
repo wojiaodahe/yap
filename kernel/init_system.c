@@ -61,6 +61,7 @@ void __set_l1_section_descriptor(unsigned long virtuladdr, unsigned long physica
 
 	*(mmu_tlb_base + (virtuladdr >> 20)) = (physicaladdr & 0xFFF00000) | attributes;
 }
+
 //映射连续n M地址空间
 void set_l1_parallel_descriptor(unsigned long viraddr_start, unsigned long viraddr_end, unsigned long phyaddr_start, unsigned int attributes)
 {
@@ -78,7 +79,7 @@ void create_page_table(void)
 {
 
     unsigned long virtuladdr, physicaladdr;
-    unsigned long *mmu_tlb_base = (unsigned long *)MMU_TLB_BASE;
+    volatile unsigned long *mmu_tlb_base = (volatile unsigned long *)MMU_TLB_BASE;
 
     /*
      * 将0～1M的虚拟地址映射到0x30000000
@@ -87,6 +88,19 @@ void create_page_table(void)
     physicaladdr = VECTOR_BASE;
     *(mmu_tlb_base + (virtuladdr >> 20)) = (physicaladdr & 0xFFF00000) | \
                                             MMU_SECDESC_WB;
+	
+    virtuladdr = 0x20000000;
+    physicaladdr = 0x20000000;
+    *(mmu_tlb_base + (virtuladdr >> 20)) = (physicaladdr & 0xFFF00000) | \
+                                            MMU_SECDESC_WB_NCNB;
+   
+
+	set_l1_parallel_descriptor(0x30000000, 0x34000000, 0x30000000, MMU_SECDESC_WB);
+
+    virtuladdr = 0x50000000;
+    physicaladdr = 0x50000000;
+    *(mmu_tlb_base + (virtuladdr >> 20)) = (physicaladdr & 0xFFF00000) | \
+                                            MMU_SECDESC;
     virtuladdr = 0x51000000;
     physicaladdr = 0x51000000;
     *(mmu_tlb_base + (virtuladdr >> 20)) = (physicaladdr & 0xFFF00000) | \
@@ -115,34 +129,6 @@ void create_page_table(void)
     *(mmu_tlb_base + (virtuladdr >> 20)) = (physicaladdr & 0xFFF00000) | \
                                             MMU_SECDESC;
 
-    virtuladdr = 0x50000000;
-    physicaladdr = 0x50000000;
-    *(mmu_tlb_base + (virtuladdr >> 20)) = (physicaladdr & 0xFFF00000) | \
-                                            MMU_SECDESC;
-    
-	virtuladdr = 0x20000000;
-    physicaladdr = 0x20000000;
-    *(mmu_tlb_base + (virtuladdr >> 20)) = (physicaladdr & 0xFFF00000) | \
-                                            MMU_SECDESC_WB_NCNB;
-
-    /*
-     * SDRAM的物理地址范围是0x30000000～0x33FFFFFF，
-     * 将虚拟地址0xB0000000～0xB3FFFFFF映射到物理地址0x30000000～0x33FFFFFF上，
-     * 总共64M，涉及64个段描述符
-     */
-
-	set_l1_parallel_descriptor(0x30000000, 0x34000000, 0x30000000, MMU_SECDESC_WB);
-#if 0
-    virtuladdr = 0x30000000;
-    physicaladdr = 0x30000000;
-    while (virtuladdr < 0x34000000)
-    {
-        *(mmu_tlb_base + (virtuladdr >> 20)) = (physicaladdr & 0xFFF00000) | \
-                                                MMU_SECDESC_WB;
-        virtuladdr += 0x100000;
-        physicaladdr += 0x100000;
-    }
-#endif
 }
 
 /*
@@ -208,6 +194,72 @@ void start_mmu(void)
 }
 
 
+void MMU_SetMTT(int vaddrStart, int vaddrEnd, int paddrStart, int attr)
+{
+    volatile unsigned int *pTT;
+    volatile int i, nSec;
+
+    pTT = (unsigned int *)MMU_TLB_BASE + (vaddrStart >> 20);
+    nSec = (vaddrEnd >> 20) - (vaddrStart >> 20);
+    for (i = 0; i <= nSec; i++)
+        *pTT++ = attr | (((paddrStart >> 20) + i) << 20);
+}
+
+void MMU_Init(void)
+{
+	int i, j;
+	//========================== IMPORTANT NOTE =========================
+	//The current stack and code area can't be re-mapped in this routine.
+	//If you want memory map mapped freely, your own sophiscated MMU
+	//initialization code is needed.
+	//===================================================================
+
+	MMU_DisableDCache();
+	MMU_DisableICache();
+
+	//If write-back is used,the DCache should be cleared.
+	for(i=0;i<64;i++)
+		for(j=0;j<8;j++)
+			MMU_CleanInvalidateDCacheIndex((i<<26)|(j<<5));
+	MMU_InvalidateICache();
+    
+	#if 0
+	//To complete MMU_Init() fast, Icache may be turned on here.
+	MMU_EnableICache(); 
+	#endif
+    
+	MMU_DisableMMU();
+	MMU_InvalidateTLB();
+
+	//MMU_SetMTT(int vaddrStart,int vaddrEnd,int paddrStart,int attr)
+	//MMU_SetMTT(0x00000000,0x07f00000,0x00000000,RW_CNB);  //bank0
+	MMU_SetMTT(0x00000000,0x03f00000,0x30000000,RW_CB);  //bank0
+	MMU_SetMTT(0x04000000,0x07f00000,0,RW_NCNB);  			//bank0
+	MMU_SetMTT(0x08000000,0x0ff00000,0x08000000,RW_CNB);  //bank1
+	MMU_SetMTT(0x10000000,0x17f00000,0x10000000,RW_NCNB); //bank2
+	MMU_SetMTT(0x18000000,0x1ff00000,0x18000000,RW_NCNB); //bank3
+	//MMU_SetMTT(0x20000000,0x27f00000,0x20000000,RW_CB); //bank4
+	MMU_SetMTT(0x20000000,0x27f00000,0x20000000,RW_NCNB); //bank4 for DM9000
+	MMU_SetMTT(0x28000000,0x2ff00000,0x28000000,RW_NCNB); //bank5
+	//30f00000->30100000, 31000000->30200000
+	MMU_SetMTT(0x30000000,0x33f00000,0x30000000,RW_CB);	  //bank6-1
+    
+	MMU_SetMTT(0x40000000,0x47f00000,0x40000000,RW_NCNB); //SFR
+	MMU_SetMTT(0x48000000,0x5af00000,0x48000000,RW_NCNB); //SFR
+	MMU_SetMTT(0x5b000000,0x5b000000,0x5b000000,RW_NCNB); //SFR
+	MMU_SetMTT(0x5b100000,0xfff00000,0x5b100000,RW_FAULT);//not used
+
+    
+	MMU_SetTTBase(MMU_TLB_BASE);
+	MMU_SetDomain(0x55555550|DOMAIN1_ATTR|DOMAIN0_ATTR); 
+	//DOMAIN1: no_access, DOMAIN0,2~15=client(AP is checked)
+	MMU_SetProcessId(0x0);
+	MMU_EnableAlignFault();
+    	
+	MMU_EnableMMU();
+	MMU_EnableICache();
+	MMU_EnableDCache(); //DCache should be turned on after MMU is turned on.
+}    
 
 /*
  * 对于MPLLCON寄存器，[19:12]为MDIV，[9:4]为PDIV，[1:0]为SDIV
@@ -268,11 +320,15 @@ void timer_init(void)
 int init_system(void)
 {
     disable_watch_dog();
-    init_memory();
-    create_page_table();
+  
     init_clock();
+#if 0
+    create_page_table();
     start_mmu();
-	
+#else
+    MMU_Init();
+#endif
+	init_memory();
 	return 0;
 }
 

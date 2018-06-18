@@ -589,7 +589,7 @@ int vfs_init(void)
     
 	printk("mkdir /nand: %d\n", sys_mkdir("/nand", 666));
 	printk("mkdir /nand/abc %d\n", sys_mkdir("/nand/abc", 666));
-    printf("mount 2 /nand/abc %d\n", do_mount(3, "/nand/abc", "ofs", 0));
+    printk("mount 2 /nand/abc %d\n", do_mount(3, "/nand/abc", "ofs", 0));
 #if 0
 	fd = sys_open("/a", O_CREAT, 0);
     printk("%d\n", sys_mknod("/tty", S_IFCHR, 0));

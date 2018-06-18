@@ -69,18 +69,28 @@ int system_call_sleep(int argc, unsigned int *argv)
 {
 	if (argc < 2)
 		return -EINVAL;
-	if (argv[0] != SYSTEM_CALL_SLEEP)
+	if (argv[0] != SYSTEM_CALL_SSLEEP)
 		return -EINVAL;
 	process_sleep(argv[1]);
 }
 
+int system_call_msleep(int argc, unsigned int *argv)
+{
+	if (argc < 2)
+		return -EINVAL;
+	if (argv[0] != SYSTEM_CALL_MSLEEP)
+		return -EINVAL;
+	process_msleep(argv[1]);
+}
+
 struct system_call_tag system_call[] = 
 {
-	{OS_SEND_RECV, system_call_sendrec},
-	{SYSTEM_CALL_OPEN, system_call_open},
-	{SYSTEM_CALL_READ, system_call_read},
+	{OS_SEND_RECV,       system_call_sendrec},
+	{SYSTEM_CALL_OPEN,   system_call_open},
+	{SYSTEM_CALL_READ,   system_call_read},
 	{SYSTEM_CALL_PRINTF, system_call_printf},
-	{SYSTEM_CALL_SLEEP, system_call_sleep},
+	{SYSTEM_CALL_SSLEEP,  system_call_sleep},
+	{SYSTEM_CALL_MSLEEP,  system_call_msleep},
 };
 
 int sys_call_schedule(int swi_num, int argc, int *argv)
@@ -162,10 +172,21 @@ void ssleep(unsigned int time)
 	const char argc = 2;
 	unsigned int argv[argc];
 	
-	argv[0] = SYSTEM_CALL_SLEEP;
+	argv[0] = SYSTEM_CALL_SSLEEP;
 	argv[1] = time;
 	user_syscall(argc, argv);
 }
+
+void msleep(unsigned int time)
+{
+	const char argc = 2;
+	unsigned int argv[argc];
+
+	argv[0] = SYSTEM_CALL_MSLEEP;
+	argv[1] = time;
+	user_syscall(argc, argv);
+}
+
 
 int myprintf(char *fmt, ...)
 {

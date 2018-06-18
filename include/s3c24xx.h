@@ -98,6 +98,12 @@
 
 #define GSTATUS1    (*(volatile unsigned long *)0x560000B0)
 
+struct s3c24xx_gpio
+{
+	volatile unsigned long gpxcon;
+	volatile unsigned long gpxdata;
+	volatile unsigned long gpxup;
+};
 
 #endif
 

@@ -31,9 +31,11 @@ typedef int (*get_disk_info)(struct disk_info *);
 
 struct blk_dev_struct 
 {
+	int dev;
+	const char *name;
 	int (*request_fn)(struct request *);
     struct super_block *super;
-    struct device *device;
+    struct file_operations * fops;
 	get_disk_info get_disk_info;
 };
 

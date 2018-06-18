@@ -43,7 +43,7 @@ int test_led(void)
 
 	while(1)
 	{
-		led_delay(0x3f0000);
+		ssleep(1);
 		GPBDAT = (~(i << 5));	 	//根据i的值，点亮LED1,2,3,4
 		if (++i == 16)
 			i = 0;
