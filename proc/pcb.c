@@ -1,7 +1,7 @@
 #include "pcb.h"
 #include "config.h"
-extern void printk(const char *fmt, ...);
-extern void * memcpy(void * dest,const void *src,unsigned int count);
+#include "head.h"
+#include "list.h"
 
 typedef struct 
 {
@@ -16,7 +16,10 @@ pcb_t *alloc_pcb(void)
 	static unsigned int cur_pcb = 0;
 	
 	if (cur_pcb < MAX_TASK_NUM)
+	{
+		INIT_LIST_HEAD(&task_pcb[cur_pcb].wq.task_list);
 		return &task_pcb[cur_pcb++];
+	}
 
 	return 0;
 }

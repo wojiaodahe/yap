@@ -3,6 +3,7 @@
 #include "message.h"
 #include "fs.h"
 #include "config.h"
+#include "wait.h"
 
 #define disable_schedule(x)	disable_irq()
 #define enable_schedule(x)	enable_irq()
@@ -48,6 +49,8 @@ typedef struct pcb
 
 	int time_slice;
 	int ticks;
+
+	wait_queue_t wq;
 
 	MESSAGE *p_msg;
 	int p_recvfrom;

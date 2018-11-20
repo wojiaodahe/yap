@@ -296,7 +296,7 @@ struct dev_arr
 
 struct dev_arr dev_arr[BUS_TYPE_NUM];
 
-int test_device(int argc, const char *argv[])
+int test_device(int argc, char *argv[])
 {
     int k, i;
 

@@ -39,6 +39,7 @@ struct blk_dev_struct
 	get_disk_info get_disk_info;
 };
 
+extern struct file_operations *get_blkfops(unsigned int major);
 extern int register_blk_request(int dev, int (*req)(struct request*));
 int block_read(struct inode *inode, unsigned int pos, char *buf, int count);
 int block_write(struct inode * inode, unsigned int pos, char * buf, int count);

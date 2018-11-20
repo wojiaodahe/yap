@@ -1,13 +1,13 @@
 #ifndef __PRINTk_H__
 #define __PRINTK_H__
 
-void    print(char* fmt, ...);
-void    printch(char ch);
-void    printdec(int dec);
-void    printflt(double flt);
-void    printbin(int bin);
-void    printhex(int hex);
-void    printstr(char* str);
+typedef char * va_list;
+#define _INTSIZEOF(n)   ((sizeof(n) + sizeof(n) - 1) & ~(sizeof(n) - 1))
+#define va_start(ap, v) (ap = (va_list)&v + _INTSIZEOF(v))
+#define va_arg(ap, t)   (*(t *)((ap += _INTSIZEOF(t)) - _INTSIZEOF(t)))
+#define va_end(ap)      (ap = (va_list)0 )
 
-#define console_print(ch)    put_char(ch)
+extern int vsprintk(char *buf, char *fmt, va_list vp);
+extern int sprintk(char *buf, char *fmt, ...);
+extern void printk(char *fmt, ...);
 #endif

@@ -4,6 +4,8 @@
 #include "blk.h"
 #include "kmalloc.h"
 #include "common.h"
+#include "printk.h"
+#include "head.h"
 
 int ofs_open(struct inode *inode, struct file *filp)
 {
@@ -131,7 +133,7 @@ int ofs_write(struct inode *inode, struct file *filp, char *buf, int len)
     return len;
 }
 
-int ofs_lookup(struct inode *dir, const char *name, int namelen, struct inode **res_inode)
+int ofs_lookup(struct inode *dir, char *name, int namelen, struct inode **res_inode)
 {
     struct ofs_inode *o_inode;
    
@@ -148,7 +150,7 @@ int ofs_lookup(struct inode *dir, const char *name, int namelen, struct inode **
         return -EINVAL;
 }
 
-int ofs_create(struct inode *dir, const char *name, int namelen, int mode, struct inode **res_inode)
+int ofs_create(struct inode *dir, char *name, int namelen, int mode, struct inode **res_inode)
 {
     return 0;
 }
@@ -156,7 +158,7 @@ int ofs_create(struct inode *dir, const char *name, int namelen, int mode, struc
 extern struct inode_operations chrdev_inode_operations;
 extern struct inode_operations blkdev_inode_operations;
 
-int ofs_mknod(struct inode *dir, const char *name, int namelen, int mode, int dev_num)
+int ofs_mknod(struct inode *dir, char *name, int namelen, int mode, int dev_num)
 {
     return 0;
 }

@@ -2,9 +2,8 @@
 #include "s3c24xx.h"
 #include "kernel.h"
 #include "common.h"
-#include "lwip/netif.h"
-#include "lwip/pbuf.h"
-
+#include "netdevice.h"
+#include "socket.h"
 
 #define DM_ADD (*((volatile unsigned short *) 0x20000300))
 #define DM_CMD (*((volatile unsigned short *) 0x20000304))
@@ -44,14 +43,14 @@ void Test_DM9000AE()
 	id_val |= (U8)DM_CMD<<16;
 	DM_ADD = DM9KS_PID_H;udelay(2);
 	id_val |= (U8)DM_CMD<<24;
-	Printf("DM9000AE ChipId is %x\r\n", id_val);
+	printk("DM9000AE ChipId is %x\r\n", id_val);
 	if(id_val == DM9KS_ID)
 	{
-		Printf("DM9000 ID 正确\r\n");
+		printk("DM9000 ID 正确\r\n");
 	}
 	else
 	{
-		Printf("DM9000 ID 不对\r\n");
+		printk("DM9000 ID 不对\r\n");
 	}
 
 }
@@ -112,15 +111,18 @@ U16 dm9000_reg_readPHY(U16 reg)
 }
 
 unsigned char Buffer[2000];
-/**/
-extern struct netif netif;
-static void int_issue(void)
+static void int_issue(void *priv)
 {
-    err_t err;
 	U32 len;
     U8 status; 
-    struct pbuf *p;
-    
+    struct sk_buff *skb;
+
+    if (!skb)
+    {
+    	printk("No More Sk_Buff\n");
+    	panic();
+    }
+
     status = dm9000_reg_read(DM9000_ISR);
     dm9000_reg_write(DM9000_ISR, status);	//清除接收中断标志位
    
@@ -132,16 +134,16 @@ static void int_issue(void)
             len= receivepacket(Buffer);
             if (len != 0)
             {
-                p = pbuf_alloc(PBUF_RAW, len, PBUF_POOL);
-                if (p == NULL) 
-                    return;
-                memcpy((u8_t*)p->payload, (u8_t*)Buffer, len);
-                err = netif.input(p, &netif);
-                if (err != ERR_OK)
-                {
-                    pbuf_free(p);
-                    p = NULL;
-                }
+            	 skb = alloc_skbuff(len);
+            	 if (!skb)
+            	 {
+            		 printk("No More SK_Buff\n");
+            		 panic();
+            	 }
+            	 skb->ndev = priv;
+            	 skb->data_len = len;
+        		 memcpy(skb->data_buf, Buffer, len);
+        		 netif_rx(skb);
             }
         }
         while (len> 0);
@@ -149,6 +151,16 @@ static void int_issue(void)
 	//ClearPending(BIT_EINT4_7);
 	//EINTPEND |= 1 << 7;
 }
+
+int DM9000_sendPcket(struct sk_buff *skb);
+struct net_device dm9000_dev =
+{
+	.ip 			 = 0xc0a80150,
+	.netmask		 = 0xffffff00,
+	.gw  			 = 0xc0a80101,
+	.mtu			 = 1514,
+	.hard_start_xmit = DM9000_sendPcket,
+};
 
 void IOSetInit(void)
 {
@@ -160,11 +172,11 @@ void IOSetInit(void)
 	EINTMASK &= ~(1 << 7);//??EINT7
 	SRCPND = SRCPND | (0x1 << 4);
 	INTPND = INTPND | (0x1 << 4);
-	put_irq_handler(DM9000_IRQ, int_issue);
+	put_irq_handler(DM9000_IRQ, int_issue, &dm9000_dev);
 	INTMSK &= ~(1 << 4);
 }
 
-void DM9000_init(struct netif *netif)
+void DM9000_init(char *mac_addr)
 {
 	U32 i;
 	Test_DM9000AE();
@@ -194,21 +206,25 @@ void DM9000_init(struct netif *netif)
 	dm9000_reg_write(DM9000_FCR,  0xff);	//接收/发送溢出
 	dm9000_reg_write(DM9000_SMCR, 0x00);	//特殊模式
 	//初始化设置步骤: 5
-	for(i=0; i<6; i++)
-		dm9000_reg_write(DM9000_PAR + i,  netif->hwaddr[i]);//mac_addr[]自己定义一下吧，6个字节的MAC地址
+	for(i = 0; i < 6; i++)
+		dm9000_reg_write(DM9000_PAR + i, mac_addr[i]);//mac_addr[]自己定义一下吧，6个字节的MAC地址
 
 	//初始化设置步骤: 6
 	dm9000_reg_write(DM9000_NSR,  0x2c);	//清除各种状态标志位
 	dm9000_reg_write(DM9000_ISR,  0x3f);	//清除所有中断标志位
 	//初始化设置步骤: 7
-	PrintfDM9000Reg();
 	dm9000_reg_write(DM9000_IMR, 0x81);		//中断使能	
 
 }
-void DM9000_sendPcket(U8 *datas, U32 length)
+int DM9000_sendPcket(struct sk_buff *skb)
 {
 	U32 len,i;
 	U8 tmp;
+	U8 *datas;
+	U32 length;
+
+	datas  = skb->data_buf;
+	length = skb->data_len;
 
 	dm9000_reg_write(DM9000_IMR,0x80);		//先禁止网卡中断，防止在发送数据时被中断干扰	
 	len = length;							//把发送长度写入
@@ -238,7 +254,7 @@ void DM9000_sendPcket(U8 *datas, U32 length)
 		
         }
 		else
-			Printf("TSR1 Send Failed\n");   	
+			printk("TSR1 Send Failed\n");
 	}
 	else
 	{
@@ -247,10 +263,14 @@ void DM9000_sendPcket(U8 *datas, U32 length)
 		
         }
 		else
-			Printf("TSR2 Send Failed\n");
+			printk("TSR2 Send Failed\n");
 	}
 	dm9000_reg_write(DM9000_NSR, 0x2c);		//清除状态寄存器，由于发送数据没有设置中断，因此不必处理中断标志位
 	dm9000_reg_write(DM9000_IMR, 0x81);		//DM9000网卡的接收中断使能
+
+	free_skbuff(skb);
+
+	return 0;
 }
 
 U32 receivepacket(U8 *datas)
@@ -316,7 +336,7 @@ U32 receivepacket(U8 *datas)
             return 0;
 #if 0
         printk("recv len: %d\n", len);
-        for (i = 0; i < 6; i++)
+        for (i = 0; i < len; i++)
             printk("%x ", datas[i]);
         printk("\n");	
 #endif
@@ -325,159 +345,159 @@ U32 receivepacket(U8 *datas)
 
 
 
-void PrintfDM9000Reg(void)
+void printkDM9000Reg(void)
 {
 	/*	U16 data,i;
 		for(i=0x0;i<0x10;i++)
 		{
 		data = dm9000_reg_read(i);
-		Printf("RET_0x%02x = %x\r\n",i,data);
+		printk("RET_0x%02x = %x\r\n",i,data);
 		}
-		Printf("\r\n");
+		printk("\r\n");
 		for(i=0x10;i<0x16;i++)
 		{
 		data = dm9000_reg_read(i);
-		Printf("RET_0x%02x = %02x\r\n",i,data);
+		printk("RET_0x%02x = %02x\r\n",i,data);
 		}
 
 		i=0x16;
 		data = dm9000_reg_read(i);
-		Printf("RET_0x%2x = %x\r\n",i,data);
+		printk("RET_0x%2x = %x\r\n",i,data);
 
 		for(i=0x1e;i<0x26;i++)
 		{
 		data = dm9000_reg_read(i);
-		Printf("RET_0x%2x = %x\r\n",i,data);
+		printk("RET_0x%2x = %x\r\n",i,data);
 		}
 
 		for(i=0x28;i<0x2c;i++)
 		{
 		data = dm9000_reg_read(i);
-		Printf("RET_0x%2x = 0x%x\r\n",i,data);
+		printk("RET_0x%2x = 0x%x\r\n",i,data);
 		}
 
 		i=0x2f;
 		data = dm9000_reg_read(i);
-		Printf("RET_0x%2x = %x\r\n",i,data);
+		printk("RET_0x%2x = %x\r\n",i,data);
 
 		for(i=0xf0;i<0xff;i++)
 		{
 		data = dm9000_reg_read(i);
-		Printf("RET_0x%2x = %x\r\n",i,data);
+		printk("RET_0x%2x = %x\r\n",i,data);
 		}
 		data = dm9000_reg_read(i);
-		Printf("RET_0x%2x = %x\r\n",i,data);
+		printk("RET_0x%2x = %x\r\n",i,data);
 
 		data = dm9000_reg_read(0xfe);
-		Printf("处理器IO模式:%x\r\n",((U8)data)>>6);
+		printk("处理器IO模式:%x\r\n",((U8)data)>>6);
 
 		data = dm9000_reg_read(0x01);
 		if(((U8)data)>>1)
-		Printf("10M以太网\r\n");				
+		printk("10M以太网\r\n");
 		else
-		Printf("100M以太网\r\n");
+		printk("100M以太网\r\n");
 
 		data = dm9000_reg_read(0x02);
-		Printf("TCR（02H）：发送控制寄存器:%x\r\n",((U8)data));
+		printk("TCR（02H）：发送控制寄存器:%x\r\n",((U8)data));
 
 		TestDm9000();
 		*/
 	U8 val, i;
 	U16 data;
-	Printf("Registers:\n");
+	printk("Registers:\n");
 	val = dm9000_reg_read(DM9000_NCR);
-	Printf("NCR = %02x(%03d)   ", val, val);
+	printk("NCR = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_NSR);
-	Printf("NSR = %02x(%03d)    ", val, val);
+	printk("NSR = %02x(%03d)    ", val, val);
 	val = dm9000_reg_read(DM9000_TCR);
-	Printf("TCR = %02x(%03d)   ", val, val);
+	printk("TCR = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_RCR);
-	Printf("RCR = %02x(%03d) \n", val, val);
+	printk("RCR = %02x(%03d) \n", val, val);
 
 	val = dm9000_reg_read(DM9000_RSR);
-	Printf("RSR = %02x(%03d)   ", val, val);
+	printk("RSR = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_ROCR);
-	Printf("ROCR = %02x(%03d)   ", val, val);
+	printk("ROCR = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_BPTR);
-	Printf("BPTR = %02x(%03d)  ", val, val);
+	printk("BPTR = %02x(%03d)  ", val, val);
 	val = dm9000_reg_read(DM9000_FCTR);
-	Printf("FCTR = %02x(%03d) \n", val, val);
+	printk("FCTR = %02x(%03d) \n", val, val);
 
 	val = dm9000_reg_read(DM9000_FCR);
-	Printf("FCR = %02x(%03d)   ", val, val);
+	printk("FCR = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_GPCR);
-	Printf("GPCR = %02x(%03d)   ", val, val);
+	printk("GPCR = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_GPR);
-	Printf("GPR = %02x(%03d)   ", val, val);
+	printk("GPR = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_WCR);
-	Printf("WCR = %02x(%03d) \n", val, val);
+	printk("WCR = %02x(%03d) \n", val, val);
 
 	val = dm9000_reg_read(DM9000_TRPAL);
-	Printf("TRPAL = %02x(%03d)   ", val, val);
+	printk("TRPAL = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_TRPAH);
-	Printf("TRPAH = %02x(%03d)   ", val, val);
+	printk("TRPAH = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_RWPAL);
-	Printf("RWPAL = %02x(%03d)   ", val, val);
+	printk("RWPAL = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_RWPAH);
-	Printf("RWPAH = %02x(%03d) \n", val, val);
+	printk("RWPAH = %02x(%03d) \n", val, val);
 
 	val = dm9000_reg_read(DM9000_VIDL);
-	Printf("VIDL  = %02x(%03d)   ", val, val);	
+	printk("VIDL  = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_VIDH);
-	Printf("VIDH  = %02x(%03d)   ", val, val);
+	printk("VIDH  = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_PIDL);
-	Printf("PIDL  = %02x(%03d)   ", val, val);
+	printk("PIDL  = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_PIDH);
-	Printf("PIDH  = %02x(%03d) \n", val, val);
+	printk("PIDH  = %02x(%03d) \n", val, val);
 
 	val = dm9000_reg_read(DM9000_CHIPR);
-	Printf("CHIPR = %02x(%03d)   ", val, val);	
+	printk("CHIPR = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_SMCR);
-	Printf("SMCR  = %02x(%03d)   ", val, val);
+	printk("SMCR  = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_TXPLL);
-	Printf("TXPLL = %02x(%03d)   ", val, val);
+	printk("TXPLL = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_TXPLH);
-	Printf("TXPLH = %02x(%03d) \n", val, val);
+	printk("TXPLH = %02x(%03d) \n", val, val);
 
 	val = dm9000_reg_read(DM9000_ISR);
-	Printf("ISR   = %02x(%03d)   ", val, val);
+	printk("ISR   = %02x(%03d)   ", val, val);
 	val = dm9000_reg_read(DM9000_IMR);
-	Printf("IMR   = %02x(%03d) \n", val, val);
+	printk("IMR   = %02x(%03d) \n", val, val);
 
-	Printf("MAC = ");
+	printk("MAC = ");
 	for(i = 0; i < 5; i++)
 	{
 		val = dm9000_reg_read(DM9000_PAR + i);
-		Printf(" %02x(%03d): ", val, val);
+		printk(" %02x(%03d): ", val, val);
 	}
 	val = dm9000_reg_read(DM9000_PAR + i);
-	Printf(" %02x(%03d)\n ", val, val);
+	printk(" %02x(%03d)\n ", val, val);
 	///////////////////////////////
 
-	Printf("PHY Registers:\n");
+	printk("PHY Registers:\n");
 	data = dm9000_reg_readPHY(DM9000_BMCR);
-	Printf(" BMCR   = %04x(%05d) ", data, data);
+	printk(" BMCR   = %04x(%05d) ", data, data);
 	data = dm9000_reg_readPHY(DM9000_BMSR);
-	Printf("BMSR   = %04x(%05d) ", data, data);
+	printk("BMSR   = %04x(%05d) ", data, data);
 	data = dm9000_reg_readPHY(DM9000_PHYID1);
-	Printf("PHYID1 = %04x(%05d)\n ", data, data);
+	printk("PHYID1 = %04x(%05d)\n ", data, data);
 
 	data = dm9000_reg_readPHY(DM9000_PHYID2);
-	Printf("PHYID2 = %04x(%05d) ", data, data);
+	printk("PHYID2 = %04x(%05d) ", data, data);
 	data = dm9000_reg_readPHY(DM9000_ANAR);
-	Printf("ANAR   = %04x(%05d) ", data, data);
+	printk("ANAR   = %04x(%05d) ", data, data);
 	data = dm9000_reg_readPHY(DM9000_DSCR);
-	Printf("DSCR   = %04x(%05d)\n ", data, data);
+	printk("DSCR   = %04x(%05d)\n ", data, data);
 
 	data = dm9000_reg_readPHY(DM9000_ANLPAR);
-	Printf("ANLPAR = %04x(%05d) ", data, data);
+	printk("ANLPAR = %04x(%05d) ", data, data);
 	data = dm9000_reg_readPHY(DM9000_ANER);
-	Printf("ANER   = %04x(%05d) ", data, data);
+	printk("ANER   = %04x(%05d) ", data, data);
 	data = dm9000_reg_readPHY(DM9000_DSCSR);
-	Printf("DSCSR  = %04x(%05d)\n ", data, data);
+	printk("DSCSR  = %04x(%05d)\n ", data, data);
 
 	data = dm9000_reg_readPHY(DM9000_10BTCSR);
-	Printf("BTCSR  = %04x(%05d)\n ", data, data);
+	printk("BTCSR  = %04x(%05d)\n ", data, data);
 
 	//TestDm9000();
 }
@@ -498,4 +518,23 @@ void testNetwork(void)
 			break;
 	}
 }
+
+int dm9000_module_init()
+{
+	char mac[6] = {0x00, 0x1c, 0x82, 0x00, 0x33, 0x1f};
+	DM9000_init(mac);
+	memcpy(dm9000_dev.macaddr, mac, 6);
+	register_netdev(&dm9000_dev);
+	return 0;
+}
+
+void dm9000_mdule_exit()
+{
+}
+
+
+
+
+
+
 

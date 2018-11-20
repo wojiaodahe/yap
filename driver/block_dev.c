@@ -186,7 +186,7 @@ struct file_operations *get_blkfops(unsigned int major)
     return blk_dev->fops;
 }
 
-int register_blkdev(unsigned int major, const char * name, struct file_operations *fops)
+int register_blkdev(unsigned int major, char * name, struct file_operations *fops)
 {
     struct blk_dev_struct *blk_dev;
 

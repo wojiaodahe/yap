@@ -37,7 +37,7 @@ void usubmask_int(unsigned int offset)
 
 
 static irq_handler irq_table[MAX_IRQ_NUMBER];
-int put_irq_handler(unsigned int irq_num, irq_server irq_handler)
+int put_irq_handler(unsigned int irq_num, irq_server irq_handler, void *priv)
 {
     int i;
 
@@ -48,6 +48,7 @@ int put_irq_handler(unsigned int irq_num, irq_server irq_handler)
             //disable_irq();
             irq_table[i].irq_num = irq_num;
             irq_table[i].irq_handler = irq_handler;
+            irq_table[i].priv = priv;
             //enable_irq();
             return 0;
         }
@@ -55,6 +56,7 @@ int put_irq_handler(unsigned int irq_num, irq_server irq_handler)
 
     return -1;
 }
+
 void do_irq(int irq_num)
 {
     int i;
@@ -63,7 +65,7 @@ void do_irq(int irq_num)
     {
         if (irq_table[i].irq_num == irq_num)
         {
-            irq_table[i].irq_handler();
+            irq_table[i].irq_handler(irq_table[i].priv);
             break;
         }
     }
@@ -71,14 +73,26 @@ void do_irq(int irq_num)
 
 void common_irq_handler()
 {
+	int bit;
     unsigned long oft = INTOFFSET;
-
-	//~{GeVP6O~}
-    if (oft == 4) 
-        EINTPEND |= (0xf << 4);   // EINT4_7~{:OSC~}IRQ4
 
     SRCPND |= (1 << oft);
     INTPND |= (1 << oft);
+
+	//~{GeVP6O~}
+    if (oft == 4) 
+    {
+        for (bit = 4; bit < 24; bit++)
+        {
+        	if (EINTPEND & (1 << bit))
+        	{
+        		oft = bit;
+        		break;
+        	}
+        }
+        EINTPEND |= (1 << bit);   // EINT4_7~{:OSC~}IRQ4
+    }
+
 #if 0
     switch (oft)
     {

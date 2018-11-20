@@ -16,7 +16,7 @@ struct ramfs_inode
     struct ramfs_inode *prev;
     struct inode       *inode;
 };
-
+extern struct super_block *ramfs_read_super(struct super_block *sb);
 #endif 
 
 

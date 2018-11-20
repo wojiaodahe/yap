@@ -3,15 +3,16 @@
 
 #define MAX_IRQ_NUMBER      64
 
-typedef void (* irq_server)(void);
+typedef void (* irq_server)(void *);
 
 typedef struct
 {
-    irq_server irq_handler;
+    irq_server	 irq_handler;
     unsigned int irq_num;
+    void 		 *priv;
 }irq_handler;
 
-extern int put_irq_handler(unsigned int , irq_server);
+extern int put_irq_handler(unsigned int , irq_server, void *);
 
 #endif
 

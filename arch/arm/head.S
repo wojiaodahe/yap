@@ -42,7 +42,7 @@ MOD_MASK	equ 	0x1f
 	IMPORT  |Image$$RW_RAM1$$ZI$$Limit|  ; to zero initialise 
 
 _start
-	b   Reset
+ 	b   Reset
 
 
 HandleUndef
@@ -50,9 +50,9 @@ HandleUndef
 Handle_swi
     b   HandleSWI			;0x08: 管理模式的向量地址，通过SWI指令进入此模式
 HandlePrefetchAbort
-    b   HandlePrefetchAbort			; 0x0c: 指令预取终止导致的异常的向量地址
+    b   HandlePrefetchAbort	; 0x0c: 指令预取终止导致的异常的向量地址
 HandleDataAbort
-    b  	HandleDataAbort			; 0x10: 数据访问终止导致的异常的向量地址
+    b  	HandleDataAbort		; 0x10: 数据访问终止导致的异常的向量地址
 HandleNotUsed
     b   HandleNotUsed		; 0x14: 保留
 Handle_irq

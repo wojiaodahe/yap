@@ -4,6 +4,7 @@
 #include "error.h"
 #include "config.h"
 #include "proc.h"
+#include "wait.h"
 
 extern void pcb_list_add(pcb_t *head, pcb_t *pcb);
 extern pcb_t * pcb_list_init(void);
@@ -51,6 +52,15 @@ unsigned int get_cpsr(void)
 	}
 
 	return p;
+}
+
+int if_any_process_wait(wait_queue_t *wq)
+{
+	return 1;
+	if (!wq)
+		return 0;
+
+	return !list_empty(&wq->task_list);
 }
 
 int user_pthread_create(int (*f)(void *), void *args, int pid)
@@ -126,7 +136,7 @@ int create_pthread(int (*f)(void *), void *args, int pid)
 }
 void OS_IntSched()
 {
-	disable_schedule();
+	//disable_schedule();
 	
 	current = current->next;
     
@@ -135,7 +145,7 @@ void OS_IntSched()
 
 	__int_schedule();
 
-	enable_schedule();
+	//enable_schedule();
 
 }
 
@@ -182,7 +192,7 @@ int OS_IDLE_PROCESS(void *arg)
 {
 	while (1)
 	{
-		printk("OS Idle Process\r\n");
+		//printk("OS Idle Process\r\n");
 		OS_Sched();
 	}
 }
@@ -211,6 +221,24 @@ void process_msleep(unsigned int m)
 	OS_Sched();
 }
 
+void set_task_status(unsigned int status)
+{
+	disable_schedule();
+
+	current->p_flags |= status;
+
+	enable_schedule();
+}
+
+void clr_task_status(unsigned int status)
+{
+	disable_schedule();
+
+	current->p_flags &= ~(status);
+
+	enable_schedule();
+}
+
 static unsigned int OS_TICKS = 0;
 void OS_Clock_Tick(void)
 {
@@ -220,6 +248,9 @@ void OS_Clock_Tick(void)
     //
     OS_TICKS++;
     //
+
+    timer_list_process();
+
 	tmp = current->next;
 	while (tmp != current)
 	{
@@ -265,6 +296,8 @@ extern int  test_open_led1(void *p);
 extern int  test_open_led2(void *p);
 extern int  test_open_led3(void *p);
 extern int test_user_syscall_printf(void *argc);
+extern int test_wait_queue(void *p);
+extern int test_socket(void *p);
 
 int OS_INIT_PROCESS(void *argv)
 {
@@ -315,19 +348,30 @@ int OS_INIT_PROCESS(void *argv)
 	//led_module_init();
 	led_driver_init();
 	led_device_init();
+	//key_module_init();
+
+	socket_init();
+	net_core_init();
+	dm9000_module_init();
+
 	//create_pthread(test_get_ticks, (void *)1, 10);
 	create_pthread(test_open_led0, (void *)2, 25);
 	create_pthread(test_open_led1, (void *)2, 25);
 	create_pthread(test_open_led2, (void *)2, 25);
 	create_pthread(test_open_led3, (void *)2, 25);
-	create_pthread(test_nand, (void *)2, 20);
-	create_pthread(test_user_syscall_open, (void *)2, 20);
+//	create_pthread(test_nand, (void *)2, 20);
+//	create_pthread(test_user_syscall_open, (void *)2, 20);
 	create_pthread(test_user_syscall_printf, (void *)2, 20);
+//	create_pthread(test_wait_queue, (void *)2, 20);
+	create_pthread(test_socket, (void *)2, 20);
+
+
+
 	enable_irq();
 #endif
 	while (1)
 	{
-		printk("OS Init Process\r\n");
+		//printk("OS Init Process\r\n");
 		OS_Sched();
 	}
 }
@@ -383,7 +427,9 @@ int OS_Init(void)
 	
 	current = pcb_head->next;
 
-    return put_irq_handler(OS_IRQ_CLOCK_TICK, OS_Clock_Tick);
+	timer_list_init();
+
+    return put_irq_handler(OS_IRQ_CLOCK_TICK, OS_Clock_Tick, 0);
 }
 
 int proc2pid(pcb_t *proc)

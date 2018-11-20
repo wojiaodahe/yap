@@ -59,31 +59,31 @@ U8 arp_process(void)//ARP接收函数，成功返回1，否则返回0
 	         }
 	         else
 	         {
-               	 Printf("其他的ARP请求\n");
+               	 printk("其他的ARP请求\n");
 	             return 0;
 	         }
 	         
 	         break;
 	   case 2    : //处理ARP应答
- 	 		 Printf("处理ARP应答\n");
+ 	 		 printk("处理ARP应答\n");
 	         if( ARPBUF->dipaddr[0] == ip_addr[0] &&
 	             ARPBUF->dipaddr[1] == ip_addr[1] &&
 	             ARPBUF->dipaddr[2] == ip_addr[2] &&
 	             ARPBUF->dipaddr[3] == ip_addr[3] )//再次判断IP，是否是给自己的应答
 	         {
-               	  Printf("!!!!!!!!自己的ARP应答!!!!!!!!!\n");
+               	  printk("!!!!!!!!自己的ARP应答!!!!!!!!!\n");
 				  memcpy(host_ip_addr, ARPBUF->sipaddr, 4);
 		          memcpy(host_mac_addr, ARPBUF->smac, 6);//保存服务器MAC地址
 		          return 1;
 	         }
 	         else
 	         {
-               	 Printf("其他的ARP应答\n");
+               	 printk("其他的ARP应答\n");
 	             return 0;
 	         }
 	         break;
 	default     ://不是ARP协议
- 			 Printf("不是ARP协议\n");
+ 			 printk("不是ARP协议\n");
 	         return 0;
 	}
 }

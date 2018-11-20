@@ -319,15 +319,18 @@ void timer_init(void)
 
 int init_system(void)
 {
+	int proto;
     disable_watch_dog();
-  
     init_clock();
-#if 0
+    *(volatile unsigned short *)0x309DFF7D = 0xaa;
+	proto = *(volatile unsigned short *)0x309DFF7D;
+#if 1
     create_page_table();
     start_mmu();
 #else
     MMU_Init();
 #endif
+   // proto = *(volatile unsigned short *)0x309DFF7D;
 	init_memory();
 	return 0;
 }

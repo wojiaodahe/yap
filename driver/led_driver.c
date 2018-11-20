@@ -4,6 +4,8 @@
 #include "fs.h"
 #include "error.h"
 #include "chr.h"
+#include "kmalloc.h"
+#include "printk.h"
 
 #define	LED_ON	1
 #define	LED_OFF 0
@@ -136,5 +138,5 @@ int led_driver_init()
 	platform_led_fops.open  = platform_led_open;
 	platform_led_fops.ioctl = platform_led_ioctl;
 
-    platform_driver_register(&led_drv);
+    return platform_driver_register(&led_drv);
 }

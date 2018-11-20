@@ -21,6 +21,7 @@ struct ofs_super_block
 
 #define FILE_SYSTEM_TYPE_OFS  2
 
+extern struct super_block *ofs_read_super(struct super_block *sb);
 #endif
 
 

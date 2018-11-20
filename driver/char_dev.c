@@ -74,7 +74,7 @@ int set_cdev_private_data(int major, void *data)
 	return 0;
 }
 
-int register_chrdev(unsigned int major, const char * name, struct file_operations *fops)
+int register_chrdev(unsigned int major, char * name, struct file_operations *fops)
 {
     struct chr_dev_struct *chr_dev;
 

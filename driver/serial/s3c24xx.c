@@ -17,9 +17,9 @@
 #define TXD0READY   (1 << 2)
 #define RXD0READY   (1)
 
-#define PCLK            50000000    // init_system.c中的init_clock函数设置PCLK为50MHz
-#define UART_CLK        PCLK        //  UART0的时钟源设为PCLK
-#define UART_BAUD_RATE  115200      // 波特率
+#define PCLK            50000000    // init_system.c涓殑init_clock鍑芥暟璁剧疆PCLK涓�50MHz
+#define UART_CLK        PCLK        //  UART0鐨勬椂閽熸簮璁句负PCLK
+#define UART_BAUD_RATE  115200      // 娉㈢壒鐜�
 #define UART_BRD        ((UART_CLK  / (UART_BAUD_RATE * 16)) - 1)
 
 
@@ -32,14 +32,13 @@ static struct uart_driver 	s3c24xx_uart_drv;
 static void s3c24xx_uart_putchar(struct uart_port *port, int c)
 {
 	char tmp = c;
-    /* 等待，直到发送缓冲区中的数据已经全部发送出去 */
+   
     while (!(UTRSTAT0 & TXD0READY));
 
-    /* 向UTXH0寄存器中写入数据，UART即自动将它发送出去 */
     UTXH0 = tmp;
 }
 
-static int s3c24xx_uart_tty_write(struct tty *tty, const char *s, unsigned int count)
+static int s3c24xx_uart_tty_write(struct tty *tty, char *s, unsigned int count)
 {
 	int i;
 	struct uart_port *port;
@@ -63,10 +62,10 @@ static int s3c24xx_uart_tty_write(struct tty *tty, const char *s, unsigned int c
 
 static unsigned char s3c24xx_uart_getchar(struct uart_port *port)
 {
-    /* 等待，直到接收缓冲区中的有数据 */
+    /* 绛夊緟锛岀洿鍒版帴鏀剁紦鍐插尯涓殑鏈夋暟鎹� */
     while (!(UTRSTAT0 & RXD0READY));
 
-    /* 直接读取URXH0寄存器，即可获得接收到的数据 */
+    /* 鐩存帴璇诲彇URXH0瀵勫瓨鍣紝鍗冲彲鑾峰緱鎺ユ敹鍒扮殑鏁版嵁 */
     return URXH0;
 }
 
@@ -103,21 +102,21 @@ void uart_isr()
 
 
 /*
- * 初始化UART
- * 115200,8N1,无流控
+ * 鍒濆鍖朥ART
+ * 115200,8N1,鏃犳祦鎺�
  */
 void init_s3c24xx_uart()
 {
-    GPHCON  |= 0xa0;    // GPH2,GPH3用作TXD0,RXD0
-    GPHUP   = 0x0c;     // GPH2,GPH3内部上拉
+    GPHCON  |= 0xa0;    // GPH2,GPH3鐢ㄤ綔TXD0,RXD0
+    GPHUP   = 0x0c;     // GPH2,GPH3鍐呴儴涓婃媺
 
-    ULCON0  = 0x03;     // 8N1(8个数据位，无较验，1个停止位)
-    UCON0   = 0x05;     // 查询方式，UART时钟源为PCLK
-    UFCON0  = 0x00;     // 不使用FIFO
-    UMCON0  = 0x00;     // 不使用流控
-    UBRDIV0 = UART_BRD; // 波特率为115200
+    ULCON0  = 0x03;     // 8N1(8涓暟鎹綅锛屾棤杈冮獙锛�1涓仠姝綅)
+    UCON0   = 0x05;     // 鏌ヨ鏂瑰紡锛孶ART鏃堕挓婧愪负PCLK
+    UFCON0  = 0x00;     // 涓嶄娇鐢‵IFO
+    UMCON0  = 0x00;     // 涓嶄娇鐢ㄦ祦鎺�
+    UBRDIV0 = UART_BRD; // 娉㈢壒鐜囦负115200
 
-    put_irq_handler(OS_IRQ_UART_0, uart_isr);
+    put_irq_handler(OS_IRQ_UART_0, uart_isr, 0);
 
 }
 

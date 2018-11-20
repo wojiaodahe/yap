@@ -96,24 +96,6 @@ typedef struct _arp_hdr 		//以太网头部+ARP首部结构
 	U8	dipaddr[4];			//目的端IP地址
 }ARP_HDR;
 
-typedef struct ip_hdr			//以太网头部+IP首部结构
-{
-	ETH_HDR ethhdr;    			//以太网首部
-	U8	vhl;      			//4位版本号4位首部长度(0x45)
-	U8	tos;				//服务类型(0)
-	U16	len;				//整个IP数据报总字节长度
-	U16	ipid;           	//IP标识
-	U16	ipoffset;     		//3位标识13位偏移
-	U8 	ttl;             	//生存时间(32或64)
-	U8	proto;         		//协议(1表示ICMP,2表示IGMP,6表示TCP,17表示UDP)
-	U16 	ipchksum;    		//首部校验和
-	U8 	srcipaddr[4];    	//源IP
-	U8	destipaddr[4];   	//目的IP
-}IP_HDR;
-
-
-//void DM9000_init(struct netif *);
-void DM9000_sendPcket(U8 *datas, U32 length);
 void PrintfDM9000Reg(void);
 void Print_HostMAC(void);
 void TestDm9000(void);

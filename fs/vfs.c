@@ -4,6 +4,9 @@
 #include "common.h"
 #include "pcb.h"
 #include "head.h"
+#include "blk.h"
+#include "ramfs.h"
+#include "ofs.h"
 
 extern pcb_t *current;
 int ROOT_DEV = 0;
@@ -68,8 +71,8 @@ int open_namei(char *pathname, int flag, int mode, struct inode **res_inode, str
     *res_inode = inode;
     return ret;
 }
-extern struct super_block *ofs_read_super(struct super_block *sb);
-struct file_system_type file_systems[] = 
+
+static struct file_system_type file_systems[] =
 {
 	{ramfs_read_super,	"ramfsfs", 1},
     {ofs_read_super,    "ofs",     3},
@@ -80,8 +83,6 @@ struct file_system_type file_systems[] =
 struct file_system_type *get_fs_type(char *name)
 {
     int i;
-    if (!name)
-        return &file_systems[0];
 
     for (i = 0; file_systems[i].read_super; i++)
     {
@@ -387,6 +388,11 @@ struct file *get_empty_filp()
     return &filp[i++];
 }
 
+struct inode *get_empty_inode()
+{
+	return kmalloc(sizeof (struct inode));
+}
+
 int sys_open(char *name, unsigned int flag, int mode)
 {
     int fd;
@@ -519,7 +525,7 @@ int sys_ioctl(unsigned int fd, unsigned int cmd, unsigned long arg)
 
 static int do_mkdir(char * pathname, int mode)
 {
-	const char * basename;
+	char * basename;
 	int namelen, error;
 	struct inode *dir;
 

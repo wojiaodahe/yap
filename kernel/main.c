@@ -2,6 +2,12 @@
 #include "fs.h"
 #include "syscall.h"
 
+#include "unistd.h"
+#include "fcntl.h"
+#include "wait.h"
+#include "socket.h"
+#include "inet_socket.h"
+
 int  test_get_ticks(void *p)
 {
 	int t;
@@ -14,6 +20,33 @@ int  test_get_ticks(void *p)
 	}
 
 	//return 0;
+}
+
+int test_wait_queue(void *p)
+{
+	int fd;
+	char buf[64];
+
+	fd = sys_open("/key", 0, 0);
+	while (1)
+	{
+		memset(buf, 0, 64);
+		sys_read(fd, buf, 64);
+		printk("++++++++++++++++wait_queue read++++++++++++++++++\n");
+	}
+	return 0;
+}
+
+int test_socket(void *p)
+{
+	unsigned int ip = 0xc0a80107;
+	while (1)
+	{
+		//arp_send_request(htonl(ip), return_ndev());
+		//frag_test();
+		test_udp_send();
+		ssleep(1);
+	}
 }
 
 int  test_open_led0(void *p)
@@ -133,11 +166,9 @@ int test_user_syscall_open(void *argc)
 
 int test_user_syscall_printf(void *argc)
 {
-    LWIP_INIT();
-
 	while (1)
 	{
-		myprintf("Process Test Printf %d %x %c %s", 10, 0xaa, 'p', "test string\n");
+		//myprintf("Process Test Printf %d %x %c %s", 10, 0xaa, 'p', "test string\n");
 		ssleep(1);
 	}
 }

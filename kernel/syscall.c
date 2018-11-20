@@ -3,7 +3,8 @@
 #include "head.h"
 #include "kernel.h"
 #include "error.h"
-#include <stdarg.h>
+#include "printk.h"
+
 
 extern pcb_t *current;
 
@@ -52,7 +53,7 @@ int system_call_read(int argc, int *argv)
 	if (argv[0] != SYSTEM_CALL_READ)
 		return -EINVAL;
 
-	return sys_read(argv[1], argv[2], argv[3]);
+	return sys_read(argv[1], (char *)argv[2], argv[3]);
 }
 
 int system_call_printf(int argc, unsigned int *argv)
@@ -62,7 +63,7 @@ int system_call_printf(int argc, unsigned int *argv)
 	if (argv[0] != SYSTEM_CALL_PRINTF)
 		return -EINVAL;
 
-	sys_write(0, argv[1], argv[2]);
+	sys_write(0, (char *)argv[1], argv[2]);
 }
 
 int system_call_sleep(int argc, unsigned int *argv)
@@ -200,12 +201,19 @@ int myprintf(char *fmt, ...)
 	memset(string, 0, 256);
 	
 	va_start(ap, fmt);
-	vsprintf(string, fmt, ap);
+
+	ret = vsprintk(string, fmt, ap);
 	argv[0] = SYSTEM_CALL_PRINTF;
 	argv[1] = (unsigned int )string;
-	argv[2] = strlen(string);
-	ret = user_syscall(argc, argv);	
+	argv[2] = ret;
+	ret = user_syscall(argc, argv);
+
 	va_end(ap);
 
 	return ret;
+}
+
+void garbage()
+{
+	vsprintf(0, 0, 0);
 }

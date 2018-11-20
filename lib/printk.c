@@ -1,10 +1,5 @@
 #include "common.h"
-
-typedef char * va_list;
-#define _INTSIZEOF(n)   ((sizeof(n) + sizeof(n) - 1) & ~(sizeof(n) - 1))
-#define va_start(ap, v) (ap = (va_list)&v + _INTSIZEOF(v))
-#define va_arg(ap, t)   (*(t *)((ap += _INTSIZEOF(t)) - _INTSIZEOF(t)))
-#define va_end(ap)      (ap = (va_list)0 )
+#include "printk.h"
 
 const char *hexstr = "0123456789abcdef";
 int hex2string(unsigned int hex, char *buf)
@@ -13,12 +8,12 @@ int hex2string(unsigned int hex, char *buf)
     unsigned int i = 0;
     char arr[10] = { 0 };
 
-    while (hex)
+    do
     {
         tmp = hex & 0xf;
         arr[i++] = *(hexstr + tmp);
         hex = hex >> 4;
-    }
+    }while (hex);
 
     tmp = i;
     while (i--)
@@ -46,6 +41,7 @@ int int2string(int num, char *buf)
         arr[i++] = *(hexstr + tmp);
         num /= 10;
     }while (num);
+
     if (sign)
         arr[i++] = '-';
 
