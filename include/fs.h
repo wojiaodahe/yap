@@ -91,12 +91,12 @@ struct file_operations
 struct inode_operations 
 {
 	struct file_operations *default_file_ops;
-	int (*create)     (struct inode *,const char *,int,int,struct inode **);
-	int (*lookup)     (struct inode *,const char *,int,struct inode **);
-	int (*mkdir)      (struct inode *,const char *,int,int);
-	int (*rmdir)      (struct inode *,const char *,int);
-	int (*mknod)      (struct inode *,const char *,int,int,int);
-	int (*rename)     (struct inode *,const char *,int,struct inode *,const char *,int);
+	int (*create)     (struct inode *, char *,int,int,struct inode **);
+	int (*lookup)     (struct inode *, char *,int,struct inode **);
+	int (*mkdir)      (struct inode *, char *,int,int);
+	int (*rmdir)      (struct inode *, char *,int);
+	int (*mknod)      (struct inode *, char *,int,int,int);
+	int (*rename)     (struct inode *, char *,int,struct inode *,const char *,int);
 };
 
 #define MAJOR(a) (((unsigned int)(a)) >> 8)
@@ -122,7 +122,8 @@ struct inode_operations
 #define S_ISFIFO(m)	(((m) & S_IFMT) == S_IFIFO)
 #define S_ISSOCK(m)	(((m) & S_IFMT) == S_IFSOCK)
 
-#define NR_OPEN    16
+#define NR_OPEN    	16
+#define NR_FILEP	32
 
 extern int sys_mknod(char * filename, int mode, unsigned int dev);
 extern int sys_read(unsigned int fd, char *buf, unsigned int count);

@@ -26,7 +26,7 @@ struct platform_device_id
 
 struct platform_device
 {
-    const char *name;
+    char *name;
     int id;
     struct device dev;
     unsigned int num_resource;
@@ -43,7 +43,13 @@ struct platform_driver
     struct platform_device_id *id_table;
 };
 
+extern int platform_bus_init(void);
 extern struct resource *platform_get_resource(struct platform_device *pdev, unsigned int type, unsigned int num);
+extern int platform_driver_register(struct platform_driver *pdrv);
+extern void platform_driver_unregister(struct platform_driver *pdrv);
+extern int platform_device_register(struct platform_device *pdev);
+extern int platform_device_unregister(struct platform_device *pdev);
+
 #endif
 
 

@@ -2,6 +2,7 @@
 #include "common.h"
 #include "error.h"
 #include "fs.h"
+#include "chr.h"
 
 #define DEFAULT_STD_DEVICE_NAME 	"ttySAC"
 
@@ -70,7 +71,7 @@ struct file_operations stderr_fops;
 #define STDOUT_DEV_MAJOR	3
 #define STDERR_DEV_MAJOR	4
 
-int create_stdin_stdout_stderr_device()
+int create_stdin_stdout_stderr_device(void)
 {
 	int ret;
 	 if (!preferred_tty)

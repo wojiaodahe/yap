@@ -1,6 +1,8 @@
 #include "s3c24xx.h"
 #include "fs.h"
 #include "head.h"
+#include "syscall.h"
+#include "chr.h"
 
 /*
  * leds.c: —≠ª∑µ„¡¡4∏ˆLED
@@ -22,14 +24,14 @@
 #define	GPB7_msk	(3<<(7*2))
 #define	GPB8_msk	(3<<(8*2))
 
-
+#if 0
 static void led_delay(unsigned long dly)
 {
 	volatile unsigned int i;
 	for (i = 0; i < dly; i++)
 		;
 }
-
+#endif
 
 void init_led()
 {

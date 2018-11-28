@@ -1,17 +1,13 @@
-/*
- * arp.c
- *
- *  Created on: 2018Äê6ÔÂ27ÈÕ
- *      Author: crane
- */
-
-#include "socket.h"
 #include "arp.h"
 #include "eth.h"
 #include "error.h"
 #include "timer.h"
 #include "common.h"
 #include "ip.h"
+#include "inet.h"
+#include "printk.h"
+#include "syslib.h"
+
 
 void print_arp(	struct arp_hdr *arp)
 {
@@ -42,12 +38,12 @@ static struct arp_table ARP_TABLE[MAX_ARP_TABLE_NUM];
 static struct list_head arp_send_q_head;
 static struct timer_list arp_send_q_timer =
 {
-    .expires = 0,
+    .expires = 5,
     .data = 0,
     .function = arp_queue_tick,
 };
 
-int add_arp_table(char *mac, unsigned int ip, struct net_device *ndev)
+int add_arp_table(unsigned char *mac, unsigned int ip, struct net_device *ndev)
 {
 	int i;
 
@@ -127,7 +123,6 @@ void arp_send_q(void)
 
 void arp_queue_tick(void *data)
 {
-	printk("arp_queue_tick()\n");
     arp_send_q();
     if (!list_empty(&arp_send_q_head))
         mod_timer(&arp_send_q_timer, 5);
@@ -156,7 +151,7 @@ int arp_send_request(unsigned int ip, struct net_device *ndev)
 	memcpy(eth->h_source, ndev->macaddr, 6);
 	eth->h_proto = htons(ETH_P_ARP);
 
-	arph = (skb->data_buf + sizeof (struct ethhdr));
+	arph = (struct arp_hdr *)(skb->data_buf + sizeof (struct ethhdr));
 	arph->daddr 	= ip;
 	arph->saddr 	= htonl(ndev->ip);
 	arph->type  	= (htons(ARP_REQ));
@@ -178,12 +173,11 @@ int arp_process(struct sk_buff *skb)
 	int ret;
 
 	arp = (struct arp_hdr *)(skb->data_buf + sizeof (struct ethhdr));
-	eth = (struct ethhdr_hdr *)(skb->data_buf);
+	eth = (struct ethhdr *)(skb->data_buf);
 	
 	switch (ntohs(arp->type))
 	{
 	case ARP_REQ:
-		print_arp(arp);
 		if ((ret = add_arp_table(arp->smac, arp->saddr, skb->ndev)) <0)
 		{
 			printk("arp table is full\n");
@@ -202,6 +196,8 @@ int arp_process(struct sk_buff *skb)
             skb->data_len= 42;
             skb->ndev->hard_start_xmit(skb, skb->ndev);
 		}
+        else
+            free_skbuff(skb);
 		arp_send_q();
 		break;
 	case ARP_RSP:
@@ -217,12 +213,17 @@ int arp_process(struct sk_buff *skb)
 		break;
 	}
 
-	return 0;
+	return ret;
 }
 
 int arp_send_q_init()
 {
     INIT_LIST_HEAD(&arp_send_q_head);
     return add_timer(&arp_send_q_timer);
+}
+
+int arp_init(void)
+{
+    return arp_send_q_init();
 }
 

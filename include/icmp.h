@@ -1,12 +1,6 @@
-/*
- * icmp.h
- *
- *  Created on: 2018Äê6ÔÂ27ÈÕ
- *      Author: crane
- */
-
 #ifndef INCLUDE_ICMP_H_
 #define INCLUDE_ICMP_H_
+#include "socket.h"
 
 #define ICMP_ER 	0      /* echo reply */
 #define ICMP_DUR 	3     /* destination unreachable */
@@ -29,6 +23,8 @@ struct icmphdr
 	unsigned short seqno;
 	//unsigned int   timestamp;
 }__attribute__((packed));
+
+extern int icmp_process(struct sk_buff *skb);
 
 #endif /* INCLUDE_ICMP_H_ */
 

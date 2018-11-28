@@ -4,6 +4,8 @@
 #include "error.h"
 #include "kmalloc.h"
 #include "common.h"
+#include "syslib.h"
+
 #define SYSTEM_DEFAULT_SECTOR_SIZE		512
 
 //static struct blk_dev_struct *blk_devs_head;

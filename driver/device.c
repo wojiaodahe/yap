@@ -2,6 +2,8 @@
 #include "device.h"
 #include "error.h"
 #include "list.h"
+#include "printk.h"
+#include "syslib.h"
 
 static struct list_head bus_list_head;
 void bus_list_init(void)
@@ -82,6 +84,7 @@ void device_initialize(struct device *dev)
 
 int driver_register(struct device_driver *drv)
 {
+	int ret;
     struct device *dev;
     struct list_head *dev_list;
     struct bus_type *this_bus_head;
@@ -103,9 +106,14 @@ int driver_register(struct device_driver *drv)
         {
             dev->driver = drv;
             if(drv->bus->probe)
-                drv->bus->probe(dev);
+               ret = drv->bus->probe(dev);
             else if (drv->probe)
-                drv->probe(dev);
+               ret = drv->probe(dev);
+			else
+				return -EINVAL;
+			
+			if (ret < 0)
+				return ret;
         }
     }
 
@@ -157,6 +165,7 @@ int driver_unregister(struct device_driver *drv)
 
 int device_register(struct device *dev)
 {
+	int ret;
     struct device_driver *drv;
     struct list_head *drv_list;
     struct bus_type *this_bus_head;
@@ -166,8 +175,11 @@ int device_register(struct device *dev)
 
     this_bus_head = bus_find_bus_head(dev->bus);
     if (!this_bus_head)
+    {
         printk("Unregistered BUS Type: %s\n", dev->bus->name);
-
+		return -EINVAL;
+    }
+	
     list_for_each(drv_list, &this_bus_head->drv_head)
     {
         drv = list_entry(drv_list, struct device_driver, list);
@@ -175,19 +187,20 @@ int device_register(struct device *dev)
         {
             dev->driver = drv;
             if(drv->bus->probe)
-                drv->bus->probe(dev);
+                ret = drv->bus->probe(dev);
             else if (drv->probe)
-                drv->probe(dev);
-            else
-                return -EINVAL;
-
-            break;
+                ret = drv->probe(dev);
+			if (!ret)
+			{
+				list_add_tail(&dev->list, &this_bus_head->dev_head);
+				return 0;
+			}
         }
     }
 
-    list_add_tail(&dev->list, &this_bus_head->dev_head);
+	dev->driver = NULL;
+	return ret;
 
-    return 0;
 }
 
 void release_dev_struct(struct device *dev)

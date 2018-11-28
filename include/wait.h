@@ -1,10 +1,3 @@
-/*
- * wait.h
- *
- *  Created on: 2018Äê6ÔÂ24ÈÕ
- *      Author: crane
- */
-
 #ifndef INCLUDE_WAIT_H_
 #define INCLUDE_WAIT_H_
 
@@ -36,5 +29,5 @@ do {\
 }while (0)
 
 #define wake_up(wq) __wake_up(wq)
-
+extern void __wake_up(wait_queue_t *wq);
 #endif /* INCLUDE_WAIT_H_ */

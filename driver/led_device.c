@@ -15,7 +15,7 @@ struct platform_device led_dev2;
 struct resource 	led_resource3[2];
 struct platform_device led_dev3;
 
-//模拟注册4个led的平台设备
+
 int led_device_init()
 {
 	int ret;
@@ -99,4 +99,5 @@ int led_device_init()
     if (ret < 0)
     	return ret;
 #endif
+	return 0;
 }

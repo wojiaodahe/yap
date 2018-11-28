@@ -1,10 +1,3 @@
-/*
- * net_dev.c
- *
- *  Created on: 2018Äê6ÔÂ28ÈÕ
- *      Author: crane
- */
-
 #include "netdevice.h"
 
 
@@ -29,8 +22,7 @@ struct net_device *return_ndev()
 	return ndev;
 }
 
-void net_core_init()
+void net_device_core_init()
 {
-	arp_send_q_init();
 	INIT_LIST_HEAD(&net_device_head);
 }

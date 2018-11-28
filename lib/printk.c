@@ -1,5 +1,7 @@
 #include "common.h"
 #include "printk.h"
+#include "syslib.h"
+#include "tty.h"
 
 const char *hexstr = "0123456789abcdef";
 int hex2string(unsigned int hex, char *buf)

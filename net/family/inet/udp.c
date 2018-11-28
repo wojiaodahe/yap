@@ -1,4 +1,5 @@
 #include "socket.h"
+#include "interrupt.h"
 #include "netdevice.h"
 #include "inet_socket.h"
 #include "eth.h"
@@ -7,44 +8,46 @@
 #include "error.h"
 #include "config.h"
 #include "common.h"
-#include "tcp.h"
+#include "inet.h"
+#include "printk.h"
+#include "syslib.h"
 
-static struct udp udp_poll[MAX_UDP_LINK_NUM];
+static struct list_head udp_queue;
 
-struct udp *alloc_udp(struct i_socket *isk)
+struct i_socket *find_udp_use_local_port(unsigned short port)
 {
-	int i;
+    struct list_head *list;
+    struct i_socket  *isk;
 
-	for (i = 0; i < MAX_UDP_LINK_NUM; i++)
-	{
-		if (!(udp_poll[i].flags & UDP_IS_USED))
-		{
-			memset(&udp_poll[i], 0, sizeof (struct udp));
-			udp_poll[i].isk = isk;
-			return &udp_poll[i];
-		}
-	}
-	
-	return NULL;
+    list = udp_queue.next;
+
+    while (list != &udp_queue)
+    {
+        isk = list_entry(list, struct i_socket, list);
+        if (isk->local_port == port)
+            return isk;
+
+        list = list->next;
+    }
+
+    return NULL;
 }
 
-void free_udp(struct udp *udp)
+unsigned short int udp_get_an_unused_port(void)
 {
-	if (udp)
-		udp->flags &= ~UDP_IS_USED;
+    static unsigned short port = 10000;
+
+    return port++;
 }
 
-struct udp *search_udp_use_local_port(unsigned short port)
+void udp_new_sock(struct i_socket *isk)
 {
-	int i;
-	
-	for (i = 0; i < MAX_UDP_LINK_NUM; i++)
-	{
-		if (udp_poll[i].local_port == port)
-			return &udp_poll[i];
-	}
-	
-	return NULL;
+    if (!isk)
+        return;
+
+    isk->local_port = udp_get_an_unused_port();
+
+    list_add_tail(&isk->list, &udp_queue);
 }
 
 int udp_send(struct i_socket *isk, unsigned char *buf, int len, int nonblock, unsigned flags)
@@ -69,7 +72,7 @@ short int udp_check(struct ip_addr *sip, struct ip_addr *dip, unsigned char *udp
     return check_sum;
 }
 
-#define DATA_LEN	2000
+#define DATA_LEN	200
 int test_udp_send()
 {
 	struct sk_buff *skb;
@@ -78,14 +81,13 @@ int test_udp_send()
 	unsigned short sport = 51291;
 	struct ip_addr dest;
 	struct ip_addr src;
-	char *data;
 
-	dest.addr = htonl(0xc0a80108);
+	dest.addr = htonl(0xc0a80168);
 	src.addr  = htonl(0xc0a80150);
 	skb = alloc_skbuff(DATA_LEN + SIZEOF_ETHHDR + SIZEOF_IPHDR + SIZEOF_UDPHDR);
 	if (!skb)
 	{
-		printk("No More Skb!!\n");
+		printk("%s No More Skb!!\n", __func__);
 		panic();
 	}
 
@@ -94,71 +96,59 @@ int test_udp_send()
 	udph->source = htons(sport);
 	udph->len 	 = htons(DATA_LEN + SIZEOF_UDPHDR);
 	udph->check  = 0;
-	udph->check  = udp_check(&src, &dest, udph, DATA_LEN +SIZEOF_UDPHDR);
+	udph->check  = udp_check(&src, &dest, (unsigned char *)udph, DATA_LEN +SIZEOF_UDPHDR);
 	skb->data_len = DATA_LEN + SIZEOF_ETHHDR + SIZEOF_IPHDR + SIZEOF_UDPHDR;
-	data = skb->data_buf + OFFSET_UDPDATA;
-	ip_send(skb, &dest, 0x11);
+    return ip_send(skb, &dest, 0x11);
 }
+
 
 int udp_recv(struct i_socket *isk, char *buf, int len, int nonblock, unsigned flags)
 {
-	struct sk_buff *tmp;
-	struct list_head *list;
-
-	if (!isk)
-		return -EBADF;
-
-	wait_event(&isk->wq, (isk->flags & PACKET_RECVED));
 	return 0;
 }
 
-int udp_sendto(struct i_socket *isk, unsigned char *buf, int len, int noblock,
+int udp_sendto(struct i_socket *isk, char *buf, int len, int noblock,
 				   unsigned flags, struct sockaddr_in *usin, int addr_len)
 {
-	struct udp *udp;
 	struct sk_buff *skb;
 	struct udphdr  *udph;
-	struct ip_addr dest;
+	struct ip_addr *dest;
 	struct ip_addr src;
 	struct net_device *ndev; 
 	
+    if (!isk)
+        return -EBADF;
 
-	dest.addr = usin->sin_addr.addr;
-	ndev = ip_route(&dest);	
+	dest = &usin->sin_addr;
+
+	ndev = ip_route(dest);	
 	if (!ndev)
-	{
-		//no route to dest ip
 		return -ENETUNREACH;
-	}
+	
+    src.addr = htonl(ndev->ip);
 
 	skb = alloc_skbuff(len + SIZEOF_ETHHDR + SIZEOF_IPHDR + SIZEOF_UDPHDR);
 	if (!skb)
 	{
-		printk("No More Skb!!\n");
+		printk("%s No More Skb!!\n", __func__);
 		panic();
 	}
 
-	src.addr = htonl(ndev->ip);
-	udp = (struct udp *)isk->prot;
-	if (!udp)
-		return -EBADF;
+    memcpy(skb->data_buf + OFFSET_UDPDATA, buf, len);
 
-	if (!udp->remote_port)
-		udp->remote_port = usin->sin_port;
-	
 	udph		  = (struct udphdr *)(skb->data_buf + OFFSET_UDPHDR);
-	udph->dest	  = htons(udp->local_port);
-	udph->source  = htons(udp->remote_port);
+	udph->dest	  = usin->sin_port;
+	udph->source  = htons(isk->local_port);
 	udph->len	  = htons(len + SIZEOF_UDPHDR);
 	udph->check   = 0;
-	udph->check   = udp_check(&src, &dest, udph, len + SIZEOF_UDPHDR);
+	udph->check   = udp_check(&src, dest, (unsigned char *)udph, len + SIZEOF_UDPHDR);
 	skb->data_len = len + SIZEOF_ETHHDR + SIZEOF_IPHDR + SIZEOF_UDPHDR;
 
-	return ip_send(skb, &dest, INET_PROTO_UDP);
+	return ip_send(skb, dest, INET_PROTO_UDP);
 }
 
-int udp_recvfome(struct i_socket *isk, void *ubuf, int len, int noblock,
-		      unsigned flags, struct sockaddr *sin, int *addrlen)
+int udp_recvfrom(struct i_socket *isk, char *ubuf, int len, int noblock,
+		      unsigned int flags, struct sockaddr *sin, int *addrlen)
 {
 	int len_remain = len;
 	struct sk_buff *tmp;
@@ -176,8 +166,8 @@ int udp_recvfome(struct i_socket *isk, void *ubuf, int len, int noblock,
 
 	if (noblock && (!(isk->flags & PACKET_RECVED)))
 		return -EAGAIN;
-	
-	wait_event(&isk->wq, (isk->flags & PACKET_RECVED));
+    
+	wait_event(&isk->wq, !list_empty(&isk->recv_data_head));
 
 	buf = ubuf;
 	disable_irq();
@@ -188,50 +178,98 @@ int udp_recvfome(struct i_socket *isk, void *ubuf, int len, int noblock,
 		if (len_remain >= tmp->data_len)
 		{
 			len_remain -= tmp->data_len;
-			memcpy(buf, tmp->data_buf, tmp->data_len);
+			memcpy(buf, (tmp->data_buf + OFFSET_UDPDATA), tmp->data_len);
 			buf += tmp->data_len;
 		}
 		else if (len_remain > 0)
 		{
-			memcpy(buf, tmp->data_buf, len_remain);
+			memcpy(buf, (tmp->data_buf + OFFSET_UDPDATA), len_remain);
 			len_remain = 0;
 			break;
 		}
 	}
 
 	free_all_skb(&isk->recv_data_head);
-	isk->flags &= ~(PACKET_RECVED);
+    INIT_LIST_HEAD(&isk->recv_data_head);
 	enable_irq();
 
 	return (len - len_remain);
 }
 
+//修改些函数为udp_recv
 int udp_recv_callback(struct sk_buff *skb)
 {
 	struct udphdr  *udph;
-	struct udp *udp;
 	struct i_socket *isk;
 	
 	udph = (struct udphdr *)(skb->data_buf + OFFSET_UDPHDR);
 
-	udp = search_udp_use_local_port(udph->dest);
-	if (!udp)
+	isk = find_udp_use_local_port(ntohs(udph->dest));
+	if (!isk)
 	{
 		free_skbuff(skb);		
 		return -ENETUNREACH;
 	}
 
-	isk = udp->isk;
 	isk->errno = 0;
-	list_add_tail(&skb->list, &udp->isk->recv_data_head);
-	udp->isk->flags |= PACKET_RECVED;
-	wake_up(&udp->isk->wq);
+	list_add_tail(&skb->list, &isk->recv_data_head);
+	wake_up(&isk->wq);
 
 	return 0;
+}
+	
+int  udp_bind(struct i_socket *isk, struct sockaddr_in *usin, int addrlen)
+{
+    return 0;
+}
+
+void print_udp(struct sk_buff *skb)
+{
+    int i;
+    struct udphdr *udph;
+    char *data;
+
+    udph = (struct udphdr *)(skb->data_buf + OFFSET_UDPHDR);
+
+    printk("sorce: %d\n", (ntohs(udph->source)));
+    printk("dest:  %d\n", (ntohs(udph->dest)));
+    printk("len:   %d\n", (ntohs(udph->len)));
+
+#if 0
+    data = skb->data_buf + OFFSET_UDPDATA;
+    for (i = 0; i < (ntohs(udph->len)); i++)
+    {
+        //printk("%c ", data[i]);
+    }
+#endif
 }
 
 int udp_process(struct sk_buff *skb)
 {
+    print_udp(skb);
 	return udp_recv_callback(skb);
 }
-			  
+
+struct i_proto_opt udp_opt[] =
+{
+    SOCK_DGRAM,
+	NULL,
+	NULL,
+	NULL,
+	udp_sendto,
+	udp_recvfrom,
+    NULL,
+	udp_bind,
+	NULL,
+	NULL,
+    NULL,
+    NULL,
+    udp_new_sock,
+};
+
+int udp_init(void)
+{
+    INIT_LIST_HEAD(&udp_queue);
+
+    return inet_register_proto(udp_opt);
+}

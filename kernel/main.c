@@ -1,6 +1,7 @@
 #include "head.h"
 #include "fs.h"
 #include "syscall.h"
+#include "vfs.h"
 
 #include "unistd.h"
 #include "fcntl.h"
@@ -34,18 +35,66 @@ int test_wait_queue(void *p)
 		sys_read(fd, buf, 64);
 		printk("++++++++++++++++wait_queue read++++++++++++++++++\n");
 	}
-	return 0;
 }
 
 int test_socket(void *p)
 {
-	unsigned int ip = 0xc0a80107;
+    int i;
+    int ret = 0;
+    int fd;
+    char buff[16];
+    struct sockaddr_in seraddr;
+	
+    seraddr.sin_family = AF_INET;
+	seraddr.sin_port = htons(8000);
+	seraddr.sin_addr.addr = htonl(0xc0a80168);
+
+
+    strcpy(buff, "helloworld");
+    fd = sys_socket(AF_INET, SOCK_DGRAM, 0);
+    test_tcp();
 	while (1)
 	{
-		//arp_send_request(htonl(ip), return_ndev());
-		//frag_test();
-		test_udp_send();
-		ssleep(1);
+      //  ret = sys_sendto(fd, buff, 20, 0, (struct sockaddr *)&seraddr, sizeof(seraddr));
+      //  if (ret < 0)
+     //       printk("sys_sendto failed: %d\n", ret);
+       
+        ret =  sys_recvfrom(fd, buff, 10, 0, (struct sockaddr *)&seraddr, sizeof (seraddr));
+        printk("sys_recvfrom ret: %d\n", ret);
+
+        for (i = 0; i < ret; i++)
+            printk("%c", buff[i]);
+        printk("\n");
+		
+        //ssleep(1);
+	}
+}
+
+int test_tcp(void *p)
+{
+    int i;
+    int ret = 0;
+    int fd;
+    char buff[16];
+    struct sockaddr_in seraddr;
+	
+    seraddr.sin_family = AF_INET;
+	seraddr.sin_port = htons(8000);
+	seraddr.sin_addr.addr = htonl(0xc0a80150);
+
+    fd = sys_socket(AF_INET, SOCK_STREAM, 0);
+
+    ret = sys_bind(fd, (struct sockaddr *)&seraddr, sizeof (seraddr));
+    if (ret < 0)
+        printk("bind faild\n");
+
+    ret = sys_listen(fd, 10);
+    if (ret < 0)
+        printk("sys_listen faild\n");
+
+	while (1)
+	{
+        ssleep(100);
 	}
 }
 
@@ -62,7 +111,6 @@ int  test_open_led0(void *p)
 		ssleep(1);
 	}
 
-	return 0;
 }
 
 int  test_open_led1(void *p)
@@ -77,8 +125,6 @@ int  test_open_led1(void *p)
 		sys_ioctl(fd, 1, 1);
 		msleep(500);
 	}
-
-	return 0;
 }
 
 int  test_open_led2(void *p)
@@ -93,7 +139,6 @@ int  test_open_led2(void *p)
 		sys_ioctl(fd, 1, 1);
 		msleep(250);
 	}
-	return 0;
 }
 
 int  test_open_led3(void *p)
@@ -108,8 +153,6 @@ int  test_open_led3(void *p)
 		sys_ioctl(fd, 1, 1);
 		msleep(125);
 	}
-
-	return 0;
 }
 
 char buff[3096];
@@ -119,7 +162,7 @@ int  test_nand(void *p)
 	int fd;
 	int ret;
 
-	if ((fd = sys_open("/nand/abc/test_ofs.c", 0)) < 0)
+	if ((fd = sys_open("/nand/abc/test_ofs.c", 0, 0)) < 0)
 	{
 		printk("open error");
 	}
@@ -135,9 +178,8 @@ int  test_nand(void *p)
 		}
 	}
 	while (1)
-    {
 		OS_Sched();
-	}
+
 	//return 0;
 }
 
@@ -159,9 +201,7 @@ int test_user_syscall_open(void *argc)
 	}
 
 	while (1)
-	{
 		OS_Sched();
-	}
 }
 
 int test_user_syscall_printf(void *argc)
@@ -172,7 +212,9 @@ int test_user_syscall_printf(void *argc)
 		ssleep(1);
 	}
 }
-
+extern int s3c24xx_init_tty(void);
+extern void init_user_program_space(void);
+extern int test_platform(void);
 int kernel_main()
 {
 	s3c24xx_init_tty();

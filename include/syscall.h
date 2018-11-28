@@ -19,5 +19,10 @@ struct system_call_tag
 	int (*fun)(int , int *);
 };
 
+extern void ssleep(unsigned int time);
+extern void msleep(unsigned int time);
+extern int myprintf(char *fmt, ...);
+
+
 #endif 
 

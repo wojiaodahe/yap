@@ -88,9 +88,9 @@
 
 extern char rNF_ReadID(void) ;
 extern void NF_Init(void) ;
-extern void NF_ReadPage(unsigned int block,unsigned int page, unsigned char * dstaddr) ;
-extern void LB_ReadPage(unsigned int addr, unsigned char * dstaddr) ;//这段程序用于，Nand Flash每页大小是2048个字节
-extern void NF_WritePage(unsigned int block,unsigned int page, unsigned char *buffer) ;
+extern void NF_ReadPage(unsigned int block,unsigned int page, char *dstaddr) ;
+extern void LB_ReadPage(unsigned int addr, char *dstaddr) ;//这段程序用于，Nand Flash每页大小是2048个字节
+extern void NF_WritePage(unsigned int block,unsigned int page, char *buffer) ;
 extern int  NF_EraseBlock(unsigned int block) ;//
 extern unsigned char NF_RamdomRead(unsigned int block,unsigned int page,unsigned int add);
 extern unsigned char NF_RamdomWrite(unsigned int block,unsigned int page,unsigned int add,unsigned char dat) ;

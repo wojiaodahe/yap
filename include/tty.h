@@ -18,4 +18,7 @@ struct tty
 	struct tty *prev;
 };
 
+extern int register_tty(struct tty *tty);
+extern int __call_tty_drivers(char *buf, unsigned int len);
+
 #endif

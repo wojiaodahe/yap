@@ -8,6 +8,9 @@
 #include "blk.h"
 #include "ofs.h"
 #include "common.h"
+#include "printk.h"
+#include "syslib.h"
+#include "kmalloc.h"
 
 
 static void NF_Reset()
@@ -30,7 +33,7 @@ void NF_Init(void)
 	NF_Reset();
 }
 
-void NF_ReaedID(unsigned char *buf)
+void NF_ReaedID(char *buf)
 {
 	int	i;
 
@@ -57,26 +60,31 @@ char rNF_ReadID()
 	char	pDID;
 	char	nBuff;
 	char	n4thcycle;
-	char    n5thcycle ;
+	char  n5thcycle ;
 	int	i;
 
 	NF_Enable();    
 	NF_Enable_RB();
 	NF_Send_Cmd(CMD_READID);	
 	NF_Send_Addr(0x0);
-	
+
 	for ( i = 0; i < 100; i++ )
 		;
-	
-	pMID 		= NF_Read_Byte();
-	pDID		= NF_Read_Byte();
-	nBuff     	= NF_Read_Byte();
+
+	pMID 		  = NF_Read_Byte();
+	pDID		  = NF_Read_Byte();
+	nBuff     = NF_Read_Byte();
 	n4thcycle	= NF_Read_Byte();
 	NF_Disable();
+
+	//为了去掉告警，加下面两行
+	n5thcycle = n4thcycle + nBuff + pMID;
+	n4thcycle = n5thcycle;
 
 	return (pDID);
 }
 
+#if 0
 static void SB_ReadPage(unsigned int addr, unsigned char * to)//这段程序用于，Nand Flash每页大小是512个字节
 {
 	unsigned int i;
@@ -105,10 +113,10 @@ static void SB_ReadPage(unsigned int addr, unsigned char * to)//这段程序用�
 	}
 
 	NF_Disable();
-
 }
+#endif
 
-void LB_ReadPage(unsigned int addr, unsigned char * dstaddr)//这段程序用于，Nand Flash每页大小是2048个字节
+void LB_ReadPage(unsigned int addr, char * dstaddr)//这段程序用于，Nand Flash每页大小是2048个字节
 {
 	unsigned int i;												//这里没有用到ECC校验；只是简单的读取数据
 
@@ -140,7 +148,7 @@ void LB_ReadPage(unsigned int addr, unsigned char * dstaddr)//这段程序用于
 
 }
 
-void NF_ReadPage(unsigned int block,unsigned int page, unsigned char * dstaddr)//这段程序用于，Nand Flash每页大小是2048个字节
+void NF_ReadPage(unsigned int block,unsigned int page, char *dstaddr)//这段程序用于，Nand Flash每页大小是2048个字节
 {
 	unsigned int i;												//这里没有用到ECC校验；只是简单的读取数据
     unsigned int blockPage = (block<<6)+page;
@@ -170,11 +178,11 @@ void NF_ReadPage(unsigned int block,unsigned int page, unsigned char * dstaddr)/
 	NF_Disable();
 }
 
-void NF_WritePage(unsigned int block,unsigned int page, unsigned char *buffer)
+void NF_WritePage(unsigned int block, unsigned int page, char *buffer)
 {
 	unsigned int i;
-	unsigned int blockPage = (block<<6)+page;
-	unsigned char *bufPt = buffer;
+	unsigned int blockPage = (block << 6) + page;
+	char *bufPt = buffer;
 	
 	NF_Reset();										//这里的addr实际上就是页号
 	NF_Enable();   //控制器使能 
@@ -346,7 +354,6 @@ unsigned char NF_RamdomWrite(unsigned int block,unsigned int page, unsigned int 
 #define NAND_DEV_NUM    3
 extern int ROOT_DEV;
 extern struct inode_operations ofs_inode_operations;
-extern void *kmalloc(int);
 int nand_do_request(struct request *req)
 {
 	int i;
@@ -393,7 +400,7 @@ int nand_get_disk_info(struct disk_info *info)
 	return 0;
 }
 
-int nand_init()
+int nand_init(void)
 {
 	int i;
 	int ret = 0;

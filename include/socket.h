@@ -1,7 +1,6 @@
 #ifndef __KN_SOCKET_H__
 #define __KN_SOCKET_H__
 #include "wait.h"
-#include "netdevice.h"
 
 #define SKB_USE_SKB_POOL	1
 
@@ -61,7 +60,7 @@ typedef enum
 struct socket 
 {
 	int fd;
-	short				type;		/* SOCK_STREAM, ...		*/
+	short int			type;		/* SOCK_STREAM, ...		*/
 	socket_state		state;
 	long				flags;
 	struct family_ops	*ops;		/* protocols do most everything	*/
@@ -93,4 +92,21 @@ struct family_ops
 	int	(*recvfrom)	(struct socket *sock, void *buff, int len, int nonblock, unsigned flags, struct sockaddr *, int *addr_len);
 };
 
+extern struct sk_buff *alloc_skbuff(unsigned int short data_len);
+extern void free_skbuff(struct sk_buff *skb);
+extern void free_all_skb(struct list_head *head);
+extern int socket_register(int family, struct family_ops *ops);
+extern int sys_socket(int family, int type, int protocol);
+extern int sys_bind(int fd, struct sockaddr *umyaddr, int addrlen);
+extern int sys_listen(int fd, int backlog);
+extern int sys_accept(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen);
+extern int sys_connect(int fd, struct sockaddr *uservaddr, int addrlen);
+extern int sys_send(int fd, void * buff, int len, unsigned flags);
+extern int sys_sendto(int fd, void * buff, int len, unsigned flags, struct sockaddr *addr, int addr_len);
+extern int sys_recv(int fd, void * buff, int len, unsigned flags);
+extern int sys_recvfrom(int fd, void * buff, int len, unsigned flags, struct sockaddr *addr, int *addr_len);
+extern int socket_register(int family, struct family_ops *ops);
+extern int socket_init(void);
+
 #endif
+

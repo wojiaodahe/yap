@@ -1,5 +1,7 @@
 #include "kmalloc.h"
 #include "common.h"
+#include "syslib.h"
+#include "printk.h"
 //#include "head.h"
 
 //#include "list.h"
@@ -17,23 +19,23 @@ static unsigned long _MEM_START;
 
 #define KERNEL_PAGE_NUM             (_MEM_SIZE / ((sizeof (struct page) + PAGE_SIZE)))
 /*
-KERNEL_PAGE_NUM 鐞涖劎銇氭稉锟介崗杈ㄦ箒婢舵艾鐨稉顏堛��(缁狅拷閸楁洜娈戠粻妤佺《: 閸愬懎鐡ㄩ惃鍕亣鐏忥拷 / (妞ら潧銇囩亸锟� + 娑擄拷娑撶尰truct page閻ㄥ嫬銇囩亸锟�),閺堝顦跨亸鎴滈嚋妞ら潧姘ㄩ張澶婎樋鐏忔垳閲渟truct page))
-娴ｅ棜绻栭弽铚傜窗鐎佃壈鍤х粭顑跨娑擃亪銆夐獮鏈电瑝閺勶拷4K鐎靛綊缍�!!!!!!!!!!!!!!!!!!!!!!!!!!
+KERNEL_PAGE_NUM 表示一共有多少个页(简单的算法: 内存的大小 / (页大小 + 一个struct page的大小),有多少个页就有多少个struct page))
+但这样会导致第一个页并不是4K对齐!!!!!!!!!!!!!!!!!!!!!!!!!!
 -------------------------------------------------------------
-閿濇笩truct page|  ....., |struct page|4K|4k|4k| ...... |4K|4k|
+｜struct page|  ....., |struct page|4K|4k|4k| ...... |4K|4k|
 -------------------------------------------------------------
-閿濇窚ERNEL_PAGE_NUM 娑擄拷 struct page   |KERNEL_PAGE_NUM 娑擃亪銆�,濮ｅ繋閲滄い闈涖亣鐏忥拷4k
+｜KERNEL_PAGE_NUM 个 struct page   |KERNEL_PAGE_NUM 个页,每个页大小4k
 */
 
 #define HEAP_START_ADDR	            (_MEM_START + (sizeof (struct page) * KERNEL_PAGE_NUM))
 /*
- *HEAP_START_ADDR 鐞涖劎銇氶惇鐔割劀閻ㄥ嫬鐖㈤崠鍝勭磻婵缍呯純锟�,娑旂喎姘ㄩ弰顖滎儑娑擄拷娑擄拷4k妞ら潧绱戞慨瀣畱娴ｅ秶鐤�
+ *HEAP_START_ADDR 表示真正的堆区开始位置,也就是第一个4k页开始的位置
  */
 #define	HEAP_END_ADDR	            (HEAP_START_ADDR + KERNEL_PAGE_NUM * PAGE_SIZE - 1)
 
 #define BUDDY_STRUCT_ADDR           (_MEM_START)
 /*
- *BUDDY_STRUCT_ADDR 鐞涖劎銇歴truct page瀵拷婵娈戞担宥囩枂濮ｅ繋閲渟truct page鐎电懓绨叉稉锟芥稉锟�4k閻ㄥ嫬褰查悽銊ょ艾閸掑棝鍘ら惃鍕敶鐎涳拷
+ *BUDDY_STRUCT_ADDR 表示struct page开始的位置每个struct page对应一个4k的可用于分配的内存
  * */
 
 /*page flags*/
@@ -348,7 +350,7 @@ struct kmem_cache *kmem_cache_create(struct kmem_cache *cache, unsigned int size
 #define KMALLOC_BIAS_SHIFT          (4)
 #define KMALLOC_MAX_SIZE            (1024 * 1024)
 #define KMALLOC_MINIMAL_SIZE_BIAS   (1 << (KMALLOC_BIAS_SHIFT))
-//KMALLOC_MINIMAL_SIZE_BIAS: malloc閻ㄥ嫭娓剁亸蹇撳瀻闁板秴宕熸担锟�,閸嬪洤顩х�瑰啰娈戞径褍鐨稉锟�(1 << 4 = 16)闁絼绠為悽瀹狀嚞鐏忓繋绨�16鐎涙濡惃鍕敶鐎涙﹫绱漦malloc娑旂喍绱版潻鏂挎礀婢堆冪毈16鐎涙濡惃鍕敶鐎涳拷
+//KMALLOC_MINIMAL_SIZE_BIAS: malloc的最小分配单位,假如它的大小为(1 << 4 = 16)那么申请小于16字节的内存，kmalloc也会返回大小16字节的内存                                                                                                                              
 #define KMALLOC_CACHE_SIZE          (KMALLOC_MAX_SIZE / KMALLOC_MINIMAL_SIZE_BIAS)
 struct kmem_cache kmalloc_cache[KMALLOC_CACHE_SIZE];
 #define kmalloc_cache_size_to_index(size) ((size + 4) >> (KMALLOC_BIAS_SHIFT))

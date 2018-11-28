@@ -3,6 +3,7 @@
 #include "error.h"
 #include "device.h"
 #include "common.h"
+#include "syslib.h"
 
 static struct chr_dev_struct chr_devs[NR_CHRDEV];
 
@@ -95,6 +96,13 @@ int register_chrdev(unsigned int major, char * name, struct file_operations *fop
 
 void unregister_chrdev(unsigned int major)
 {
+    int chr;
+
+    for (chr = 0; chr < NR_CHRDEV; chr++) 
+    {
+        if (chr_devs[chr].dev == major)
+          	memset(&chr_devs[chr], 0, sizeof(chr_devs[0]));
+    }
 
 }
 

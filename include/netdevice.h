@@ -1,15 +1,11 @@
-/*
- * netdevice.h
- *
- *  Created on: 2018Äê6ÔÂ28ÈÕ
- *      Author: crane
- */
+
 
 #ifndef INCLUDE_NETDEVICE_H_
 #define INCLUDE_NETDEVICE_H_
 
 #include "list.h"
 #include "device.h"
+#include "socket.h"
 
 #define IF_NAME_SIZE	16
 
@@ -65,14 +61,15 @@ struct net_device
 	void (*uninit)(struct net_device *dev);
 	int	 (*open)(struct net_device *dev);
 	int	 (*stop)(struct net_device *dev);
-	int	 (*hard_start_xmit) (struct sk_buff *skb,struct net_device *dev);
+	int	 (*hard_start_xmit)(struct sk_buff *skb, struct net_device *ndev);
 	int	 (*set_mac_address)(struct net_device *dev, void *addr);
-	int	 (*do_ioctl)(struct net_device *dev, struct ifreq *ifr, int cmd);
-	int	 (*set_config)(struct net_device *dev, struct ifmap *map);
-	int	 (*change_mtu)(struct net_device *dev, int new_mtu);
 };
 
 #define to_net_dev(d) container_of(d, struct net_device, dev)
 
+extern int register_netdev(struct net_device *dev);
+extern void net_device_core_init(void);
 
 #endif /* INCLUDE_NETDEVICE_H_ */
+
+

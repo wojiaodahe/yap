@@ -1,10 +1,15 @@
 
-void memset(char *src, unsigned int num, unsigned int len)
+void memset(void *src, unsigned char num, unsigned int len)
 {
+    unsigned char *tmp;
 	int i = 0;
+    
+    if (!src || !len)
+        return;
+    tmp = src;
 	for (i = 0; i < len; i++)
 	{
-		*src++ = num;
+		*tmp++ = num;
 	}
 }
 

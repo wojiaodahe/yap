@@ -1,10 +1,3 @@
-/*
- * unistd.h
- *
- *  Created on: 2018Äê6ÔÂ18ÈÕ
- *      Author: crane
- */
-
 #ifndef INCLUDE_UNISTD_H_
 #define INCLUDE_UNISTD_H_
 

@@ -1,4 +1,5 @@
 #include "platform.h"
+#include "printk.h"
 
 struct resource test_resource[2];
 struct platform_device test_dev;
@@ -8,7 +9,6 @@ struct platform_device test_dev1;
 
 int test_probe(struct platform_device *pdev)
 {
-    int i;
     struct resource *res;
 
     res = platform_get_resource(pdev, IORESOURCE_IO, 0);

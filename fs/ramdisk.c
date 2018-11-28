@@ -6,10 +6,8 @@
 #include "head.h"
 
 #define RAMDISK_SIZE    (1024 *1024 *2)
-
 #define RAMDISK_DEV_NUM     1
 extern int ROOT_DEV;
-
 extern struct inode_operations ramfs_inode_operations;
 
 int ramdisk_do_request(struct request *req)
@@ -60,7 +58,7 @@ int ramdisk_get_disk_info(struct disk_info *info)
 //!!!!!!!!!!!!!
 //!!!!!!!!!!!!!
 //WARNING! MAYBE BUGS!
-int ramdisk_init()
+int ramdisk_init(void)
 {
 	int ret = 0;
 

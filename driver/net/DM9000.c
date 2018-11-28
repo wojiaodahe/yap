@@ -4,6 +4,10 @@
 #include "common.h"
 #include "netdevice.h"
 #include "socket.h"
+#include "printk.h"
+#include "syslib.h"
+#include "interrupt.h"
+
 
 #define DM_ADD (*((volatile unsigned short *) 0x20000300))
 #define DM_CMD (*((volatile unsigned short *) 0x20000304))
@@ -26,11 +30,8 @@ void udelay(U32 t)
 }
 void Test_DM9000AE()
 {
-	int i;
 	U32 id_val;
-	
-    i = GPACON;
-    GPACON |= 0x7fffff;
+
 	BWSCON = (BWSCON & ~(0x03 << 16)) | (0x01 << 16);
 	BANKCON4 = (1 << 13) | (2 << 11) | (7 << 8) | (2 << 6) | (1 << 4) | (1 << 2) | 0;
 
@@ -152,7 +153,7 @@ static void int_issue(void *priv)
 	//EINTPEND |= 1 << 7;
 }
 
-int DM9000_sendPcket(struct sk_buff *skb);
+int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev);
 struct net_device dm9000_dev =
 {
 	.ip 			 = 0xc0a80150,
@@ -216,7 +217,7 @@ void DM9000_init(char *mac_addr)
 	dm9000_reg_write(DM9000_IMR, 0x81);		//ÖÐ¶ÏÊ¹ÄÜ	
 
 }
-int DM9000_sendPcket(struct sk_buff *skb)
+int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev)
 {
 	U32 len,i;
 	U8 tmp;

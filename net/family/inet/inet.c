@@ -1,11 +1,6 @@
-/*
- * inet.c
- *
- *  Created on: 2018Äê6ÔÂ29ÈÕ
- *      Author: crane
- */
-
 #include "inet_socket.h"
+#include "netdevice.h"
+#include "arp.h"
 
 #define BigLittleSwap16(n) ((((unsigned short)((n) & 0xff)) << 8) | (((n) & 0xff00) >> 8))
 
@@ -44,4 +39,71 @@ unsigned int ntohl(unsigned long int n)
 unsigned short ntohs(unsigned short int n)
 {
 	return checkCPUendian() ? n : BigLittleSwap16(n);
+}
+
+#if 0
+unsigned short inet_chksum(void *dataptr, unsigned short len)
+{
+  unsigned int acc;
+  unsigned short src;
+  unsigned char *octetptr;
+
+  acc = 0;
+  /* dataptr may be at odd or even addresses */
+  octetptr = (unsigned char*)dataptr;
+  while (len > 1) {
+    /* declare first octet as most significant
+       thus assume network order, ignoring host order */
+    src = (*octetptr) << 8;
+    octetptr++;
+    /* declare second octet as least significant */
+    src |= (*octetptr);
+    octetptr++;
+    acc += src;
+    len -= 2;
+  }
+  if (len > 0) {
+    /* accumulate remaining octet */
+    src = (*octetptr) << 8;
+    acc += src;
+  }
+  /* add deferred carry bits */
+  acc = (acc >> 16) + (acc & 0x0000ffffUL);
+  if ((acc & 0xffff0000UL) != 0) {
+    acc = (acc >> 16) + (acc & 0x0000ffffUL);
+  }
+  /* This maybe a little confusing: reorder sum using htons()
+     instead of ntohs() since it has a little less call overhead.
+     The caller must invert bits for Internet sum ! */
+  return htons((unsigned short)acc);
+}
+#else
+unsigned short inet_chksum(void *buffer, unsigned short size)
+{
+	__packed unsigned short *tmp;
+	unsigned long cksum=0;
+
+	tmp = (unsigned short *)buffer;
+	while(size >1)
+	{
+		cksum += *tmp++;
+		size -= sizeof(unsigned short);
+	}
+	if(size) 
+		cksum += *tmp;
+	cksum = (cksum >> 16) + (cksum & 0xffff);
+	cksum += (cksum >> 16);
+	return (unsigned short)(~cksum);
+}
+#endif
+
+int net_core_init(void)
+{
+    int ret;
+
+    net_device_core_init();
+    ip_init();
+    ret =  arp_init();
+    
+    return ret;
 }

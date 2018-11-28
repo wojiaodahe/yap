@@ -62,8 +62,9 @@ struct tcphdr
 				   res2:2;
 
 	unsigned short window;
-	unsigned short chedk;
+	unsigned short check;
 	unsigned short urg_ptr;
 }__attribute__((packed));
 
+extern int tcp_process(struct sk_buff *skb);
 #endif

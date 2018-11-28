@@ -7,8 +7,6 @@ int add_timer(struct timer_list *timer)
 {
 	struct list_head *list;
 	struct timer_list *tmp;
-    unsigned int offset;
-    int ret = -1;
 
 	if (!timer)
 		return -EINVAL;
@@ -29,7 +27,7 @@ int add_timer(struct timer_list *timer)
 void del_timer(struct timer_list *timer)
 {
 	if (!timer)
-		return -EINVAL;
+		return;
 
     //disable_irq();
 
@@ -37,8 +35,6 @@ void del_timer(struct timer_list *timer)
 	INIT_LIST_HEAD(&timer->list);
 
     //enable_irq();
-
-	return 0;
 }
 
 int mod_timer(struct timer_list *timer, unsigned long expires)

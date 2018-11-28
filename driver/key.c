@@ -5,6 +5,7 @@
 #include "wait.h"
 #include "interrupt.h"
 #include "kernel.h"
+#include "chr.h"
 
 static char keyflag = 0;
 wait_queue_t wq;
@@ -80,7 +81,7 @@ int key_read(struct inode *inode, struct file *filp, char *buf, int len)
 	return 1;
 }
 
-void key_irq()
+void key_irq(void *arg)
 {
 	keyflag = 1;
 	wake_up(&wq);
@@ -98,14 +99,18 @@ int key_module_init(void)
 	key_fops.ioctl = key_ioctl;
 	key_fops.read  = key_read;
 
+	ret = put_irq_handler(KEY1_IRQ, key_irq, 0);
+	if (ret < 0)
+		return ret;
+
 	ret = register_chrdev(key_major, "key", &key_fops);
 	if (ret < 0)
 		return ret;
-	put_irq_handler(KEY1_IRQ, key_irq, 0);
+
 	return sys_mknod("/key", S_IFCHR, key_major);
 }
 
 void key_module_exit(void)
 {
-
+	unregister_chrdev(10);
 }

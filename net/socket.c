@@ -4,6 +4,17 @@
 #include "common.h"
 #include "proc.h"
 #include "pcb.h"
+#include "printk.h"
+#include "syslib.h"
+#include "kmalloc.h"
+
+extern int inet_family_init(void);
+extern struct file *get_empty_filp(void);
+extern struct inode *get_empty_inode(void);
+
+
+
+#define SO_ACCEPTCON	(1<<16)		/* performed a listen		*/
 
 extern struct pcb *current;
 
@@ -34,7 +45,7 @@ struct sk_buff *alloc_skbuff(unsigned short len)
 {
 #if SKB_USE_SKB_POOL
 	int i;
-	print_unused_skb();
+	//print_unused_skb();
 	for (i = 0; i < MAX_SKB_NUM; i++)
 	{
 		if (SKB[i].use_flag == SKB_NO_USE)
@@ -44,7 +55,6 @@ struct sk_buff *alloc_skbuff(unsigned short len)
 				break;
 			INIT_LIST_HEAD(&SKB[i].list);
 			SKB[i].use_flag = SKB_USED;
-			//SKB[i].data_buf = kmalloc(len);
 			return &SKB[i];
 		}
 	}
@@ -113,15 +123,15 @@ struct socket * socki_lookup(struct inode *inode)
 
 static struct socket * sockfd_lookup(int fd, struct file **pfile)
 {
-  struct file *file;
+    struct file *file;
 
-  if (fd < 0 || fd >= NR_OPEN || !(file = current->filp[fd]))
-	  return(NULL);
+    if (fd < 0 || fd >= NR_OPEN || !(file = current->filp[fd]))
+        return(NULL);
 
-  if (pfile)
-	  *pfile = file;
+    if (pfile)
+        *pfile = file;
 
-  return socki_lookup(file->f_inode);
+    return socki_lookup(file->f_inode);
 }
 
 static int sock_read(struct inode *inode, struct file *file, char *ubuf, int size)
@@ -194,6 +204,8 @@ void sock_close(struct inode *inode, struct file *file)
 
 static struct file_operations socket_file_ops = 
 {
+	NULL,
+	sock_close,
 	sock_read,
 	sock_write,
 	sock_ioctl,
@@ -202,7 +214,6 @@ static struct file_operations socket_file_ops =
 	sock_close
 };
 
-extern struct inode *get_empty_inode();
 static struct socket *sock_alloc(void)
 {
 	struct socket *sock;
@@ -246,7 +257,6 @@ void sock_free(struct socket *sock)
 
 }
 
-extern struct file *get_empty_filp();
 static int sock_alloc_fd(struct socket *sock)
 {
 	int fd;
@@ -288,8 +298,7 @@ void sock_free_fd(struct socket *sock)
 {
 	int fd;
 	struct file *file;
-	struct inode *inode;
-
+	
 	fd = sock->fd;
 
 	file = current->filp[fd];
@@ -356,7 +365,6 @@ int sys_socket(int family, int type, int protocol)
 
 int sys_bind(int fd, struct sockaddr *umyaddr, int addrlen)
 {
-	int ret;
 	struct socket *sock;
 
 	if (fd < 0 || fd > NR_OPEN || current->filp[fd] == NULL)
@@ -440,7 +448,6 @@ int sys_connect(int fd, struct sockaddr *uservaddr, int addrlen)
 {
 	struct socket *sock;
 	struct file *file;
-	int ret;
 
 	if (fd < 0 || fd >= NR_OPEN || (file=current->filp[fd]) == NULL)
 		return -EBADF;
@@ -461,7 +468,6 @@ int sys_connect(int fd, struct sockaddr *uservaddr, int addrlen)
 	default:
 		printk("NET: sock_connect: socket not unconnected\n");
 		return -EINVAL;
-		break;
 	}
 
 	return sock->ops->connect(sock, uservaddr, addrlen, file->f_flags);
@@ -489,7 +495,8 @@ int sys_sendto(int fd, void * buff, int len, unsigned flags, struct sockaddr *ad
 
 	if (fd < 0 || fd >= NR_OPEN || ((file = current->filp[fd]) == NULL))
 		return -EBADF;
-	if (!(sock = sockfd_lookup(fd, NULL))) return(-ENOTSOCK);
+	if (!(sock = sockfd_lookup(fd, NULL))) 
+        return -ENOTSOCK;
 
 	return(sock->ops->sendto(sock, buff, len, (file->f_flags & O_NONBLOCK),
 							  flags, addr, addr_len));
@@ -544,7 +551,7 @@ int socket_register(int family, struct family_ops *ops)
 	return -ENOMEM;
 }
 
-void socket_init(void)
+int socket_init(void)
 {
 	struct socket *sock;
 	int i;
@@ -557,5 +564,5 @@ void socket_init(void)
 	for (i = 0; i < MAX_PROTO; ++i)
 		family_ops[i] = NULL;
 
-	inet_family_init();
+	return inet_family_init();
 }

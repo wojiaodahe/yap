@@ -14,7 +14,7 @@ extern void usubmask_int(unsigned int offset);
  */
 void disable_watch_dog(void)
 {
-    WTCON = 0;  // 关闭WATCHDOG很简单，往这个寄存器写0即可
+    WTCON = 0;
 }
 
 
@@ -319,18 +319,15 @@ void timer_init(void)
 
 int init_system(void)
 {
-	int proto;
     disable_watch_dog();
+  
     init_clock();
-    *(volatile unsigned short *)0x309DFF7D = 0xaa;
-	proto = *(volatile unsigned short *)0x309DFF7D;
-#if 1
+#if 0
     create_page_table();
     start_mmu();
 #else
     MMU_Init();
 #endif
-   // proto = *(volatile unsigned short *)0x309DFF7D;
 	init_memory();
 	return 0;
 }

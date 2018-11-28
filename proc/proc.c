@@ -5,6 +5,11 @@
 #include "config.h"
 #include "proc.h"
 #include "wait.h"
+#include "timer.h"
+#include "syslib.h"
+#include "printk.h"
+#include "vfs.h"
+#include "inet.h"
 
 extern void pcb_list_add(pcb_t *head, pcb_t *pcb);
 extern pcb_t * pcb_list_init(void);
@@ -25,10 +30,10 @@ unsigned int OSIntNesting = 0;
 		do{																		\
 				(sp)=(sp)-4;/*r15*/												\
 				*(volatile unsigned int *)(sp)=(unsigned int)(fn);/*r15*/		\
-				(sp)=(sp)-4;/*cpsr*/												\
+				(sp)=(sp)-4;/*cpsr*/											\
 				*(volatile unsigned int *)(sp)=(unsigned int)(cpsr);/*r14*/		\
-				(sp)=(sp)-4;/*lr*/											\
-				*(volatile unsigned int *)(sp)=(unsigned int)(lr);			\
+				(sp)=(sp)-4;/*lr*/												\
+				*(volatile unsigned int *)(sp)=(unsigned int)(lr);				\
 				(sp)=(sp)-4*13;/*r12,r11,r10,r9,r8,r7,r6,r5,r4,r3,r2,r1,r0*/	\
 				*(volatile unsigned int *)(sp)=(unsigned int)(args);			\
 		}while(0)
@@ -54,16 +59,7 @@ unsigned int get_cpsr(void)
 	return p;
 }
 
-int if_any_process_wait(wait_queue_t *wq)
-{
-	return 1;
-	if (!wq)
-		return 0;
-
-	return !list_empty(&wq->task_list);
-}
-
-int user_pthread_create(int (*f)(void *), void *args, int pid)
+int user_thread_create(int (*f)(void *), void *args, int pid)
 {
 	unsigned int sp;
 	
@@ -98,7 +94,7 @@ int user_pthread_create(int (*f)(void *), void *args, int pid)
 
 }
 
-int create_pthread(int (*f)(void *), void *args, int pid)
+int kernel_thread(int (*f)(void *), void *args, int pid)
 {
 	unsigned int sp;
 	
@@ -108,7 +104,7 @@ int create_pthread(int (*f)(void *), void *args, int pid)
 
 	if((sp = (unsigned int)get_process_sp()) == 0)
 	{
-		printk("create_pthread get sp_space error\r\n");
+		printk("kernel_thread get sp_space error\r\n");
 		return -ENOMEM;
 	}
 
@@ -134,6 +130,7 @@ int create_pthread(int (*f)(void *), void *args, int pid)
 
 	return 0;
 }
+
 void OS_IntSched()
 {
 	//disable_schedule();
@@ -240,7 +237,7 @@ void clr_task_status(unsigned int status)
 }
 
 static unsigned int OS_TICKS = 0;
-void OS_Clock_Tick(void)
+void OS_Clock_Tick(void *arg)
 {
     pcb_t *tmp;
 
@@ -277,12 +274,12 @@ void OS_Clock_Tick(void)
     enable_irq();
 }
 
-unsigned int OS_Get_Kernel_Ticks()
+unsigned int OS_Get_Kernel_Ticks(void)
 {
     return OS_TICKS;
 }
 		
-void panic()
+void panic(void)
 {
 	while (1)
 		;
@@ -298,7 +295,13 @@ extern int  test_open_led3(void *p);
 extern int test_user_syscall_printf(void *argc);
 extern int test_wait_queue(void *p);
 extern int test_socket(void *p);
-
+extern int led_driver_init(void);
+extern int led_device_init(void);
+extern void LWIP_INIT(void);
+extern int socket_init(void);
+extern int create_stdin_stdout_stderr_device(void);
+extern void bus_list_init(void);
+extern int platform_bus_init(void);
 int OS_INIT_PROCESS(void *argv)
 {
 	int ret;
@@ -331,14 +334,14 @@ int OS_INIT_PROCESS(void *argv)
 	}
 
 #if 1
-	ret = create_pthread(OS_SYS_PROCESS,  (void *)0, OS_SYS_PROCESS_PID);
+	ret = kernel_thread(OS_SYS_PROCESS,  (void *)0, OS_SYS_PROCESS_PID);
 	if (ret < 0)
 	{
 		printk("create OS_SYS_PROCESS error\n");
 		panic();
 	}
 
-	ret = create_pthread(OS_IDLE_PROCESS, (void *)0, OS_IDLE_PROCESS_PID);
+	ret = kernel_thread(OS_IDLE_PROCESS, (void *)0, OS_IDLE_PROCESS_PID);
 	if (ret < 0)
 	{
 		printk("create OS_IDLE_PROCESS error\n");
@@ -355,15 +358,15 @@ int OS_INIT_PROCESS(void *argv)
 	dm9000_module_init();
 
 	//create_pthread(test_get_ticks, (void *)1, 10);
-	create_pthread(test_open_led0, (void *)2, 25);
-	create_pthread(test_open_led1, (void *)2, 25);
-	create_pthread(test_open_led2, (void *)2, 25);
-	create_pthread(test_open_led3, (void *)2, 25);
-//	create_pthread(test_nand, (void *)2, 20);
-//	create_pthread(test_user_syscall_open, (void *)2, 20);
-	create_pthread(test_user_syscall_printf, (void *)2, 20);
-//	create_pthread(test_wait_queue, (void *)2, 20);
-	create_pthread(test_socket, (void *)2, 20);
+	kernel_thread(test_open_led0, (void *)2, 25);
+	kernel_thread(test_open_led1, (void *)2, 25);
+	kernel_thread(test_open_led2, (void *)2, 25);
+	kernel_thread(test_open_led3, (void *)2, 25);
+//	kernel_thread(test_nand, (void *)2, 20);
+//	kernel_thread(test_user_syscall_open, (void *)2, 20);
+	kernel_thread(test_user_syscall_printf, (void *)2, 20);
+//	kernel_thread(test_wait_queue, (void *)2, 20);
+	kernel_thread(test_socket, (void *)2, 20);
 
 
 
@@ -418,7 +421,7 @@ int OS_Init(void)
     	panic();
     }
 
-	ret = create_pthread(OS_INIT_PROCESS, (void *)0, OS_INIT_PROCESS_PID);
+	ret = kernel_thread(OS_INIT_PROCESS, (void *)0, OS_INIT_PROCESS_PID);
 	if (ret < 0)
 	{
 		printk("create OS_INIT_PROCESS error\n");

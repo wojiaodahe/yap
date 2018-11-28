@@ -4,6 +4,7 @@
 #include "blk.h"
 #include "kmalloc.h"
 #include "common.h"
+#include "syslib.h"
 
 
 int  ramfs_open   (struct inode *, struct file *);
@@ -51,6 +52,7 @@ int ramfs_open(struct inode *inode, struct file *filp)
 
 void ramfs_close(struct inode *inode, struct file *filp)
 {
+
 }
 
 int ramfs_read(struct inode *inode, struct file *filp, char *buf, int len)
@@ -143,7 +145,7 @@ int ramfs_add_node(struct ramfs_inode *parent, struct ramfs_inode *child)
    return 0;
 }
 
-int ramfs_create(struct inode *dir,   char *name, int namelen, int mode, struct inode **res_inode)
+int ramfs_create(struct inode *dir, char *name, int namelen, int mode, struct inode **res_inode)
 {
     struct ramfs_inode *parent;
     struct ramfs_inode *child;

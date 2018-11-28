@@ -1,12 +1,8 @@
-/*
- * arp.h
- *
- *  Created on: 2018Äê6ÔÂ27ÈÕ
- *      Author: crane
- */
-
 #ifndef INCLUDE_ARP_H_
 #define INCLUDE_ARP_H_
+
+#include "socket.h"
+#include "netdevice.h"
 
 struct arp_hdr
 {
@@ -30,11 +26,19 @@ struct arp_hdr
 #define MAX_ARP_TABLE_NUM	256
 struct arp_table
 {
-	char mac[6];
+	unsigned char mac[6];
 	unsigned int ip;
 	unsigned int type;
 	struct net_device *ndev;
 };
 
 extern int arp_process(struct sk_buff *skb);
+extern int arp_init(void);
+extern int add_arp_table(unsigned char *mac, unsigned int ip, struct net_device *ndev);
+extern void delete_arp_table(void);
+extern struct arp_table *search_arp_table(unsigned int ip);
+extern void add_skb_to_arp_send_q(struct sk_buff *skb);
+extern int arp_send_request(unsigned int ip, struct net_device *ndev);
+
 #endif /* INCLUDE_ARP_H_ */
+

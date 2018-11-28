@@ -1,10 +1,3 @@
-/*
- * icmp.c
- *
- *  Created on: 2018Äê6ÔÂ27ÈÕ
- *      Author: crane
- */
-
 #include "ip.h"
 #include "eth.h"
 #include "icmp.h"
@@ -12,6 +5,9 @@
 #include "common.h"
 #include "inet_socket.h"
 #include "netdevice.h"
+#include "inet.h"
+#include "printk.h"
+#include "syslib.h"
 
 void print_icmp(struct icmphdr *icmph)
 {
@@ -42,7 +38,6 @@ int icmp_send(struct sk_buff *skb, struct ip_addr *dest, unsigned char type, uns
 
 int icmp_process(struct sk_buff *skb)
 {
-	struct icmphdr *icmph;
 	struct iphdr   *iph;
 	struct ip_addr dest;
 

@@ -1,12 +1,7 @@
-/*
- * eth.h
- *
- *  Created on: 2018Äê6ÔÂ27ÈÕ
- *      Author: crane
- */
-
 #ifndef INCLUDE_ETH_H_
 #define INCLUDE_ETH_H_
+
+#include "socket.h"
 
 #define ETH_P_LOOP	0x0060		/* Ethernet Loopback packet	*/
 #define ETH_P_ECHO	0x0200		/* Ethernet Echo packet		*/
@@ -28,7 +23,6 @@ struct ethhdr
 	unsigned short	h_proto;		/* packet type ID field	*/
 }__attribute__((packed));
 
-
-
+extern int netif_rx(struct sk_buff *skb);
 
 #endif /* INCLUDE_ETH_H_ */

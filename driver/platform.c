@@ -3,6 +3,7 @@
 #include "list.h"
 #include "platform.h"
 #include "common.h"
+#include "syslib.h"
 
 #define to_platform_driver(drv) container_of((drv), struct platform_driver, driver)
 #define to_platform_device(dev) container_of((dev), struct platform_device, dev)

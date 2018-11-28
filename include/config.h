@@ -12,7 +12,7 @@
 #define VIRTUAL_VECTOR_ADDR				0x0
 #define PHYSICAL_VECTOR_ADDR			0x30000000
 
-#define TLB_BASE                		0x33a00000                //TLB鍩哄�?1绾ч〉琛ㄥ熀鍧�)
+#define TLB_BASE                		0x33a00000              
 
 #define USER_PROGRAM_SPACE_START		0x32000000
 #define USER_PROGRAM_SPACE_SIZE			(TLB_BASE - USER_PROGRAM_SPACE_START)

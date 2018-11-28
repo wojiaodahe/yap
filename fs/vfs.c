@@ -7,8 +7,15 @@
 #include "blk.h"
 #include "ramfs.h"
 #include "ofs.h"
+#include "proc.h"
 
+extern int nand_init(void);
+extern int ramdisk_init(void);
+extern int lookup(struct inode *dir, char *name, int len, struct inode **result);
+extern int dir_namei(char *pathname, int *namelen, char **name, struct inode *base, struct inode **res_inode);
 extern pcb_t *current;
+
+static struct file FILP[NR_FILEP];
 int ROOT_DEV = 0;
 
 int open_namei(char *pathname, int flag, int mode, struct inode **res_inode, struct inode *base)
@@ -98,7 +105,7 @@ int fs_may_mount(unsigned int dev)
 }
 
 extern struct super_block *find_super(unsigned int dev);
-extern struct super_block *alloc_super();
+extern struct super_block *alloc_super(void);
 struct super_block *read_super(unsigned int dev, char *name, int flags, void *data)
 {
     struct super_block *sb;
@@ -373,19 +380,17 @@ int sys_unmount(char *dir_name)
 	return 0;
 }
 
-//!!!!!!!!!!!!!
-//WARNING! MAYBE BUGS!
 struct file *get_empty_filp()
 {
-//!!!!!!!!
-//!!!!!!!!
-    static unsigned int i = 0;
-	static struct  file filp[32];
+	int i = 0;
 
-    if (i > 32)
-        return NULL;
+	for (i = 0; i < NR_FILEP; i++)
+	{
+		if (!FILP[i].f_op)
+			return &FILP[i];
+	}
 
-    return &filp[i++];
+    return NULL;
 }
 
 struct inode *get_empty_inode()
@@ -546,7 +551,7 @@ static int do_mkdir(char * pathname, int mode)
     if (!dir->i_op || !dir->i_op->mkdir) 
    		return -EPERM;
 	
-	error = dir->i_op->mkdir(dir,basename,namelen,mode);
+	error = dir->i_op->mkdir(dir, basename, namelen, mode);
 	
     return error;
 }
@@ -589,9 +594,23 @@ int sys_mknod(char * filename, int mode, unsigned int dev)
 
 int vfs_init(void)
 {
-    ramdisk_init();
-	nand_init();
-    mount_root();
+	int ret;
+
+	ret = ramdisk_init();
+	if (ret < 0)
+	{
+		printk("RAMDISK INIT FAILED!!\n");
+		panic();
+	}
+
+	ret = nand_init();
+	if (ret < 0)
+	{
+		printk("NAND INIT FAILED!!\n");
+		panic();
+	}
+
+	mount_root();
     
 	printk("mkdir /nand: %d\n", sys_mkdir("/nand", 666));
 	printk("mkdir /nand/abc %d\n", sys_mkdir("/nand/abc", 666));

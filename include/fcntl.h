@@ -1,10 +1,3 @@
-/*
- * fnctl.h
- *
- *  Created on: 2018Äê6ÔÂ18ÈÕ
- *      Author: crane
- */
-
 #ifndef INCLUDE_FCNTL_H_
 #define INCLUDE_FCNTL_H_
 

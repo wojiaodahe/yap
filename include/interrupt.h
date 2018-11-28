@@ -13,6 +13,8 @@ typedef struct
 }irq_handler;
 
 extern int put_irq_handler(unsigned int , irq_server, void *);
+extern void enable_irq(void);
+extern void disable_irq(void);
 
 #endif
 

@@ -4,8 +4,11 @@
 #include "kernel.h"
 #include "error.h"
 #include "printk.h"
+#include "vfs.h"
+#include "proc.h"
 
 
+extern struct file *get_empty_filp(void);
 extern pcb_t *current;
 
 #if 0
@@ -43,7 +46,7 @@ int system_call_open(int argc, int *argv)
 	if (argv[0] != SYSTEM_CALL_OPEN)
 		return -EINVAL;
 
-	return sys_open(argv[1], argv[2], argv[3]);
+	return sys_open((char *)argv[1], argv[2], argv[3]);
 }
 
 int system_call_read(int argc, int *argv)
@@ -56,32 +59,56 @@ int system_call_read(int argc, int *argv)
 	return sys_read(argv[1], (char *)argv[2], argv[3]);
 }
 
-int system_call_printf(int argc, unsigned int *argv)
+int system_call_printf(int argc, int *argv)
 {
 	if (argc < 3)
 		return -EINVAL;
 	if (argv[0] != SYSTEM_CALL_PRINTF)
 		return -EINVAL;
 
-	sys_write(0, (char *)argv[1], argv[2]);
+	return sys_write(0, (char *)argv[1], argv[2]);
 }
 
-int system_call_sleep(int argc, unsigned int *argv)
+int system_call_sleep(int argc, int *argv)
 {
 	if (argc < 2)
 		return -EINVAL;
 	if (argv[0] != SYSTEM_CALL_SSLEEP)
 		return -EINVAL;
 	process_sleep(argv[1]);
+	return 0;
 }
 
-int system_call_msleep(int argc, unsigned int *argv)
+int system_call_msleep(int argc, int *argv)
 {
 	if (argc < 2)
 		return -EINVAL;
 	if (argv[0] != SYSTEM_CALL_MSLEEP)
 		return -EINVAL;
 	process_msleep(argv[1]);
+	return 0;
+}
+
+int system_call_dup2(int oldfd, int newfd)
+{
+    if (newfd > NR_OPEN || oldfd > NR_OPEN)
+        return -EBADF;
+
+    if (oldfd == newfd)
+        return newfd;
+    
+    if (!current->filp[newfd])
+        current->filp[newfd] = get_empty_filp();
+    
+    if (!current->filp[newfd])
+        return -EBADF;
+
+    if (!current->filp[oldfd])
+        return -EBADF;
+
+    memcpy(current->filp[newfd], current->filp[oldfd], sizeof (struct file));
+    
+    return newfd;
 }
 
 struct system_call_tag system_call[] = 
@@ -213,6 +240,7 @@ int myprintf(char *fmt, ...)
 	return ret;
 }
 
+extern int vsprintf(int, int, int);
 void garbage()
 {
 	vsprintf(0, 0, 0);

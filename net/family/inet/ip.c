@@ -1,33 +1,27 @@
-/*
- * ip.c
- *
- *  Created on: 2018��6��27��
- *      Author: crane
- */
-
 #include "ip.h"
 #include "arp.h"
 #include "eth.h"
+#include "udp.h"
+#include "tcp.h"
 #include "icmp.h"
 #include "error.h"
-#include "socket.h"
 #include "common.h"
-#include "inet_socket.h"
 #include "netdevice.h"
+#include "inet.h"
+#include "printk.h"
+#include "syslib.h"
+#include "timer.h"
 
 static unsigned short ip_data_id = 1000;
-
-#define IP_FRAG_LIST_HEAD_NUM 32
-struct ipfrag
-{
-	unsigned short id;
-	struct sk_buff *skb;
-	struct list_head head;
-	unsigned short current_len;
-	unsigned short original_len;
-};
-
 static struct ipfrag ip_frag_list_head[IP_FRAG_LIST_HEAD_NUM];
+
+void ip_timer_tick(void *data);
+static struct timer_list ip_timer = 
+{
+    .expires   = IP_TICKS,
+    .data      = 0,
+    .function  =  ip_timer_tick,
+};
 
 static struct ipfrag *search_frag_list(unsigned short id)
 {
@@ -41,19 +35,68 @@ static struct ipfrag *search_frag_list(unsigned short id)
 	return NULL;
 }
 
-extern struct net_device *return_ndev();
+static struct ipfrag *add_frag_list(struct sk_buff *skb, struct iphdr *iph)
+{
+    int i;
+
+    for (i = 0; i < IP_FRAG_LIST_HEAD_NUM; i++)
+    {
+        if (ip_frag_list_head[i].id == IP_FRAG_LIST_NO_USED)
+        {
+            ip_frag_list_head[i].id = ntohs(iph->id);
+            list_add_tail(&skb->list, &ip_frag_list_head[i].head);
+            ip_frag_list_head[i].timeout = OS_Get_Kernel_Ticks();
+            return &ip_frag_list_head[i];
+        }
+    }
+
+    return NULL;
+}
+
+static void free_frag_list(struct ipfrag *frag_head)
+{
+    struct list_head *list;
+    struct sk_buff *skb;
+
+    list = frag_head->head.next;
+
+    while (list != &frag_head->head)
+    {
+        skb = list_entry(list, struct sk_buff, list);
+        list = list->next;
+        free_skbuff(skb);
+    }
+
+    memset(frag_head, 0, sizeof (struct ipfrag));
+}
+
+/* ip层定时器节拍  */
+void ip_timer_tick(void *data)
+{
+    int i;
+    unsigned long tick;
+    
+    tick = OS_Get_Kernel_Ticks();
+    for (i = 0; i < IP_FRAG_LIST_HEAD_NUM; i++)
+    {
+        if ((ip_frag_list_head[i].id != IP_FRAG_LIST_NO_USED) && \
+            ((tick - ip_frag_list_head[i].timeout) > IP_FRAG_LIFETIME))/* 如果ip分片的存在时间超过了生存周期,则认为超时*/
+            free_frag_list(&ip_frag_list_head[i]);
+    }
+
+    mod_timer(&ip_timer, IP_TICKS);
+}
+
+extern struct net_device *return_ndev(void);
 struct net_device *ip_route(struct ip_addr *dest)
 {
 	return return_ndev();
 }
 
-
 int ip_do_send(struct sk_buff *skb, struct ip_addr *dest, unsigned char proto, struct net_device *ndev)
 {
 	struct ethhdr    *eth;
-	struct iphdr     *iph;
 	struct arp_table *arpt = NULL;
-	int ret;
 
 	eth = (struct ethhdr *)(skb->data_buf);
 
@@ -81,26 +124,102 @@ int ip_fragment_create()
 	return 0;
 }
 
-int ip_try_fragment_glue()
-{
-	return 0;
-}
-
-int ip_do_recv()
-{
-	return 0;
-}
-
-int ip_recv(struct sk_buff *skb)
+int ip_do_recv(struct sk_buff *skb)
 {
 	struct iphdr *iph;
 
 	iph = (struct iphdr *)(skb->data_buf + OFFSET_IPHDR);
-	if (iph->frag_off)
-		return ip_try_fragment_glue(skb);
+	
+    switch (iph->protocol)
+	{
+	case PROTO_ICMP:
+		return icmp_process(skb);
+	case PROTO_UDP:
+		return udp_process(skb);
+	case PROTO_TCP:
+        return tcp_process(skb);
+		break;
+	default:
+		free_skbuff(skb);
+        return -EPROTONOSUPPORT;
+	}
 
-	return ip_do_recv(skb);
+	return 0;
 }
+
+int ip_fragment_glue(struct ipfrag *frag_head)
+{
+    char *src, *dest;
+    struct list_head *list;
+    struct sk_buff *skb;
+    struct sk_buff *frag;
+    struct iphdr *iph;
+
+    if (!frag_head)
+        return 0;
+
+    /* 根据ip报文的总大小申请一个skb */
+    skb = alloc_skbuff(frag_head->original_len);
+    if (!skb)
+    {
+        free_frag_list(frag_head);
+        return 0;
+    }
+    
+    dest = skb->data_buf + OFFSET_IPDATA;
+    list_for_each(list, &frag_head->head)
+    {
+        frag = list_entry(list, struct sk_buff, list);
+        iph  = (struct iphdr *)(frag->data_buf + OFFSET_IPHDR);
+   
+        src  = frag->data_buf + OFFSET_IPDATA; /* src指向当前ip分片的ip数据(ip数据是ip头之后的数据) */
+        dest = skb->data_buf + OFFSET_IPDATA + (ntohs(iph->frag_off) & IP_FRAG_MASK); /* dest指向当前ip分片中的数据在整个ip报文中的位置 */
+        memcpy(dest, src, iph->tot_len); /* 按照分片中的数据大小,把数据复制到相应的位置 */
+    }
+
+    free_frag_list(frag_head);
+
+    return ip_do_recv(skb);
+}
+
+int ip_try_fragment_glue(struct sk_buff *skb)
+{
+    struct iphdr  *iph;
+    struct ipfrag *frag_head;
+    unsigned short int frag_off;
+
+    if (!skb)
+        return 0;
+
+    iph = skb->data_buf + OFFSET_IPHDR;
+
+    frag_off  = ntohs(iph->frag_off);
+
+//    if (frag_off & IP_DF)
+//        return xxxx;
+    
+    frag_head = search_frag_list(ntohs(iph->id)); /* 根据ip头中的id来查找这个ip其他分片所在的链表  */
+    if (!frag_head)
+    {
+        frag_head = add_frag_list(skb, iph); /* 如果查找失败说明这是此ip报文的第一个分片  */
+        if (!frag_head)
+        {
+            free_skbuff(skb);
+            return 0;
+        }
+    }
+    
+    frag_head->current_len += iph->tot_len; /* 所有已收到分片中的数据总和加上当前分片的数据大小*/
+    
+    if (!(frag_off & IP_MF))  /* 如果是最后一个分片,则根据它的偏移和数据大小算出整个ip报文的大小 */
+        frag_head->original_len = (frag_off & IP_FRAG_MASK) + iph->tot_len;
+
+    if (frag_head->current_len == frag_head->original_len)  /* 如果已接收的数据和总大小相同说明所有分片已到达,则重组分片 */
+        return ip_fragment_glue(frag_head);
+
+	return 0;
+}
+
 
 
 int ip_fragment(struct sk_buff *skb, struct ip_addr *destaddr, unsigned char proto, struct net_device *ndev)
@@ -157,7 +276,7 @@ int ip_fragment(struct sk_buff *skb, struct ip_addr *destaddr, unsigned char pro
 		iphnew->version  = ((4 << 4) | 5);
 		iphnew->tot_len  = htons(ip_data_len + SIZEOF_IPHDR);
 		iphnew->check    = 0;
-		iphnew->check    = inet_chksum(iphnew, SIZEOF_IPHDR);
+		iphnew->check    = inet_chksum((char *)iphnew, SIZEOF_IPHDR);
 
 		skbnew->data_len = ip_data_len + SIZEOF_IPHDR + SIZEOF_ETHHDR;
 		ret = ip_do_send(skbnew, destaddr, proto, ndev);
@@ -197,7 +316,7 @@ int ip_send(struct sk_buff *skb, struct ip_addr *dest, unsigned char proto)
 	iph->version  = ((4 << 4) | 5);
 	iph->tot_len  = htons(skb->data_len - SIZEOF_ETHHDR);
 	iph->check    = 0;
-	iph->check    = inet_chksum(iph, SIZEOF_IPHDR);
+	iph->check    = inet_chksum((char *)iph, SIZEOF_IPHDR);
 	
 	return ip_do_send(skb, dest, proto, ndev);
 }
@@ -231,31 +350,41 @@ void print_ip(struct iphdr *iph)
 	printk("tot_len: %d\n", ntohs(iph->tot_len));
 	printk("id: %d\n", ntohs(iph->id));
 	printk("ttl: %d\n", iph->ttl);
-	printk("frag_off: %d\n", iph->frag_off);
+    printk("flag: %x\n", ntohs(iph->frag_off) & (IP_MF | IP_DF | IP_CE));
+	printk("frag_off: %x %d\n", ntohs(iph->frag_off) & IP_FRAG_MASK, ntohs(iph->frag_off) & IP_FRAG_MASK);
 	printk("protocol: %x\n", iph->protocol);
 	printk("saddr: %x\n", ntohl(iph->saddr));
 	printk("daddr: %x\n", ntohl(iph->daddr));
 }
 
-int ip_process(struct sk_buff *skb)
+int ip_recv(struct sk_buff *skb)
 {
 	struct iphdr *iph;
+    unsigned short frag_off;
 
 	iph = (struct iphdr *)(skb->data_buf + OFFSET_IPHDR);
-	print_ip(iph);
-	switch (iph->protocol)
-	{
-	case PROTO_ICMP:
-		return icmp_process(skb);
-		break;
-	case PROTO_UDP:
-		return udp_process(skb);
-		break;
-	case PROTO_TCP:
-		break;
-	default:
-		free_skbuff(skb);
-	}
+    frag_off = ntohs(iph->frag_off);
 
-	return 0;
+	if ((frag_off & IP_MF) || (frag_off & IP_FRAG_MASK))
+		return ip_try_fragment_glue(skb);
+
+	return ip_do_recv(skb);
 }
+
+void ip_init(void)
+{
+    int i;
+
+    for (i = 0; i < IP_FRAG_LIST_HEAD_NUM; i++)
+    {
+        ip_frag_list_head[i].id              = IP_FRAG_LIST_NO_USED ;
+        ip_frag_list_head[i].skb             = NULL;
+        ip_frag_list_head[i].current_len     = 0;
+        ip_frag_list_head[i].original_len    = 0;
+        ip_frag_list_head[i].timeout         = 0;
+        INIT_LIST_HEAD(&ip_frag_list_head[i].head);
+    }
+
+    add_timer(&ip_timer);
+}
+    

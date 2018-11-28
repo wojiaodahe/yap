@@ -1,7 +1,6 @@
 #ifndef __I_SOCKET_H__
 #define __I_SOCKET_H__
 
-#include "ip.h"
 #include "icmp.h"
 #include "arp.h"
 #include "eth.h"
@@ -71,19 +70,22 @@ struct i_socket
 
 struct i_proto_opt
 {
+
+    int proto;
 	void (*close)(struct i_socket *isk, int timeout);
-	int	 (*read)(struct i_socket *isk, unsigned char *to, int len, int nonblock, unsigned flags);
-	int	 (*write)(struct i_socket *isk, unsigned char *to,  int len, int nonblock, unsigned flags);
-	int	 (*sendto)(struct i_socket *isk, unsigned char *buf, int len, int noblock,
+	int	 (*read)(struct i_socket *isk, char *to, int len, int nonblock, unsigned flags);
+	int	 (*write)(struct i_socket *isk, char *to,  int len, int nonblock, unsigned flags);
+	int	 (*sendto)(struct i_socket *isk, char *buf, int len, int noblock,
 				  unsigned flags, struct sockaddr_in *usin, int addr_len);
-	int	 (*recvfrom)(struct i_socket *isk, unsigned char *buf, int len, int noblock,
-					unsigned flags, struct sockaddr_in *usin, int *addr_len);
+	int	 (*recvfrom)(struct i_socket *isk, char *buf, int len, int noblock,
+					unsigned int flags, struct sockaddr_in *usin, int *addr_len);
 	int	 (*connect)(struct i_socket *isk, struct sockaddr_in *usin, int addr_len);
 	int  (*bind)(struct i_socket *isk, struct sockaddr_in *usin, int addrlen);
-	int  (*accept)(struct i_socket *isk, struct i_socket *new_isk, int flags);
+	int  (*accept)(struct i_socket *isk, int flags);
 	int  (*listen)(struct i_socket *isk, int backlog);
-	int	 (*send)(struct i_socket *isk, unsigned char *to, int len, int nonblock, unsigned flags);
-	int	 (*recv)(struct i_socket *isk, unsigned char *to, int len, int nonblock, unsigned flags);
+	int	 (*send)(struct i_socket *isk, char *to, int len, int nonblock, unsigned flags);
+	int	 (*recv)(struct i_socket *isk, char *to, int len, int nonblock, unsigned flags);
+    void (*proto_new_sock)(struct i_socket *isk);
 };
 
 #define PACKET_RECVED	(1 << 0)
@@ -95,6 +97,7 @@ struct i_proto_opt
 #define SIZEOF_TCPHDR	(sizeof (struct tcphdr))
 
 #define OFFSET_IPHDR	(SIZEOF_ETHHDR)
+#define OFFSET_IPDATA   (SIZEOF_ETHHDR + SIZEOF_IPHDR)
 #define OFFSET_ICMPHDR	(SIZEOF_ETHHDR + SIZEOF_IPHDR)
 #define OFFSET_UDPHDR	(SIZEOF_ETHHDR + SIZEOF_IPHDR)
 #define OFFSET_UDPDATA	(SIZEOF_ETHHDR + SIZEOF_IPHDR + SIZEOF_UDPHDR)
@@ -102,6 +105,13 @@ struct i_proto_opt
 #define OFFSET_TCPDATA  (SIZEOF_ETHHDR + SIZEOF_IPHDR + SIZEOF_TCPHDR)
 
 #define INET_PROTO_UDP	0x11
+#define INET_PROTe_TCP  0x06
+
+#define  MAX_INET_PROTO 3 //tcp udp raw
+
+extern struct i_socket *alloc_isocket(void);
+extern void release_sock(struct i_socket *isk);
+extern int inet_register_proto(struct i_proto_opt *opt);
 
 #endif
 
