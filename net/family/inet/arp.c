@@ -216,6 +216,28 @@ int arp_process(struct sk_buff *skb)
 	return ret;
 }
 
+void updata_arp_table(struct sk_buff *skb)
+{
+	struct ethhdr  *eth;
+    struct arp_table *arpt;
+    struct iphdr *iph;
+
+	eth = (struct ethhdr *)(skb->data_buf);
+
+	switch (ntohs(eth->h_proto))
+	{
+	case ETH_P_IP:
+        iph = (struct iphdr *)(skb->data_buf + OFFSET_IPHDR);
+        arpt = search_arp_table(iph->saddr);
+        if (arpt)
+            return;
+        add_arp_table(eth->h_source, iph->saddr, skb->ndev);
+        break;
+	case ETH_P_ARP:
+        break;
+	}
+}
+
 int arp_send_q_init()
 {
     INIT_LIST_HEAD(&arp_send_q_head);

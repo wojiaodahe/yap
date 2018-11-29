@@ -39,7 +39,7 @@ struct i_socket *find_sock(struct sk_buff *skb, struct tcphdr *tcph)
 
     iph = (struct iphdr *)(skb->data_buf + OFFSET_IPHDR);
 
-    if (tcph->syn && tcph->ack)
+    if ((tcph->syn && tcph->ack) || (!tcph->syn && tcph->ack))
     {
         if (list_empty(&active_queue))
             return NULL;
@@ -47,7 +47,7 @@ struct i_socket *find_sock(struct sk_buff *skb, struct tcphdr *tcph)
         {
             isk = list_entry(list, struct i_socket, list);
             if ((isk->remote_ip == ntohl(iph->saddr)) && \
-                (isk->remote_port == ntohs(tcph->source)));
+                (isk->remote_port == ntohs(tcph->source)))
                 return isk;
         }
     }
@@ -58,9 +58,11 @@ struct i_socket *find_sock(struct sk_buff *skb, struct tcphdr *tcph)
         list_for_each(list, &listen_queue)
         {
             isk = list_entry(list, struct i_socket, list);
-            if (isk->local_port == ntohs(tcph->dest));
+            if ((isk->local_ip == ntohl(iph->daddr)) && \
+                (isk->local_port == ntohs(tcph->dest)))
                 return isk;
         }
+
     }
     else
     {
@@ -145,16 +147,78 @@ unsigned short tcp_check()
     return 0;
 }
 
-void tcp_send_ack(struct i_socket *isk, struct tcphdr *tcph, unsigned int seq, unsigned int ack_seq)
+unsigned short tcp_get_mss(void)
+{
+    return 1460;
+}
+
+void tcp_syn_build_options(struct sk_buff *skb, int mss, int ts, int sack, \
+                          int offer_wscale, int wacale, unsigned int tstamp, unsigned int ts_recent)
+{
+    __packed unsigned int *ptr;
+    struct tcphdr *tcph;
+
+    tcph = (struct tcphdr *)(skb->data_buf + OFFSET_TCPHDR);
+    ptr = (unsigned int *)(tcph + 1);
+
+    *ptr++ = htonl((TCPOPT_MSS << 24) | (TCPOLEN_MSS << 16) | mss);
+    if (sack)
+    {
+        *ptr++ = htonl((TCPOPT_SACK_PERM  << 24) |\
+                       (TCPOLEN_SACK_PERM << 16) |\
+                       (TCPOPT_TIMESTAMP  << 8)  |\
+                       (TCPOLEN_TIMESTAMP));
+    }
+
+    if (wacale)
+    {
+        *ptr++ = htonl((TCPOPT_NOP     << 24) |\
+                       (TCPOPT_WINDOW  << 16) |\
+                       (TCPOLEN_WINDOW << 8)  |\
+                       (wacale));
+    }
+}
+
+void tcp_build_header(struct sk_buff *skb, struct i_socket *isk, struct tcphdr *tcph, \
+                      unsigned int seq, unsigned ack_seq, int ack, int syn, int opt)
+{
+    struct tcphdr *tcp;
+    int doff;
+
+    if (!skb || !isk || !tcph)
+        return;
+
+    doff = (opt) ? OPTIONED_TCPHEAD_SIZE : SIZEOF_TCPHDR;
+    
+    tcp = (struct tcphdr *)(skb->data_buf + OFFSET_TCPHDR);
+    tcp->source     = tcph->dest;
+    tcp->dest       = tcph->source;
+    tcp->ack        = ack;
+    tcp->seq        = htonl(seq);
+    tcp->ack_seq    = htonl(ack_seq); 
+    tcp->window     = htons(tcp_select_window(isk));
+    tcp->syn        = syn;
+    tcp->doff       = doff / 4;
+    
+    if (opt)
+        tcp_syn_build_options(skb, tcp_get_mss(), TCPOPT_TS_N, TCPOPT_SACK_Y, TCPOPT_WSCALE_Y, TCPOPT_WSCALE_VALUE, 0, 0);
+}
+
+#if 0
+void tcp_send_ack(struct i_socket *isk, struct tcphdr *tcph, unsigned int seq, unsigned int ack_seq, int syn, int opt)
 {
     struct sk_buff *skb;
     struct tcphdr *tcp;
     struct ip_addr dest;
+    struct net_device *ndev;
+    struct ip_addr src;
+    int doff;
 
     if (!isk || !tcph)
         return;
 
-    skb = alloc_skbuff(SIZEOF_ETHHDR + SIZEOF_IPHDR + SIZEOF_TCPHDR);
+    doff = (syn) ? OPTIONED_TCPHEAD_SIZE : SIZEOF_TCPHDR;
+    skb = alloc_skbuff(SIZEOF_ETHHDR + SIZEOF_IPHDR + doff);
     if (!skb)
         return;
     
@@ -162,19 +226,56 @@ void tcp_send_ack(struct i_socket *isk, struct tcphdr *tcph, unsigned int seq, u
     tcp->source     = tcph->dest;
     tcp->dest       = tcph->source;
     tcp->ack        = 1;
-    tcp->seq        = seq;
-    tcp->ack_seq    = ack_seq; 
+    tcp->seq        = htonl(seq);
+    tcp->ack_seq    = htonl(ack_seq); 
     tcp->window     = htons(tcp_select_window(isk));
-    tcp->syn        = 0;
-    tcp->doff       = (sizeof (struct tcphdr) / 4);
-    tcp->check      = 0;
-    tcp->check      = tcp_check();
+    tcp->syn        = syn;
+    tcp->doff       = doff / 4;
     
     dest.addr = htonl(isk->remote_ip);
-    skb->data_len = SIZEOF_ETHHDR + SIZEOF_IPHDR + SIZEOF_TCPHDR;
+    skb->data_len = SIZEOF_ETHHDR + SIZEOF_IPHDR + doff;
+
+    if (syn)
+        tcp_syn_build_options(skb, tcp_get_mss(), 0, 1, 1, 7, 0, 0);
+    
+    src.addr = htonl(0xc0a80150);
+    tcp->check      = 0;
+    tcp->check      = inet_check(&src, &dest, (unsigned char *)tcp, doff, INET_PROTO_TCP);
    
     ip_send(skb, &dest, PROTO_TCP);
 }
+
+#else
+void tcp_send_ack(struct i_socket *isk, struct tcphdr *tcph, \
+                  unsigned int seq, unsigned int ack_seq, int syn, int opt)
+{
+    struct sk_buff *skb;
+    struct tcphdr *tcp;
+    struct ip_addr dest;
+    struct net_device *ndev;
+    struct ip_addr src;
+    int doff;
+
+    if (!isk || !tcph)
+        return;
+
+    doff = (syn) ? OPTIONED_TCPHEAD_SIZE : SIZEOF_TCPHDR;
+    skb = alloc_skbuff(SIZEOF_ETHHDR + SIZEOF_IPHDR + doff);
+    if (!skb)
+        return;
+    
+    tcp_build_header(skb, isk, tcph, seq, ack_seq, ACK_Y, syn, opt);
+    skb->data_len = SIZEOF_ETHHDR + SIZEOF_IPHDR + doff;
+    
+    dest.addr = htonl(isk->remote_ip);
+    src.addr = htonl(isk->local_ip);
+    tcp = (struct tcphdr *)(skb->data_buf + OFFSET_TCPHDR);
+    tcp->check      = 0;
+    tcp->check      = inet_check(&src, &dest, (unsigned char *)tcp, doff, INET_PROTO_TCP);
+   
+    ip_send(skb, &dest, PROTO_TCP);
+}
+#endif
 
 void set_tcp_options(struct i_socket *isk, struct tcphdr *tcph)
 {
@@ -184,28 +285,20 @@ void set_tcp_options(struct i_socket *isk, struct tcphdr *tcph)
 int tcp_connect_request_handler(struct sk_buff *skb, struct i_socket *isk, struct tcphdr *tcph)
 {
     struct iphdr *iph;
-    struct i_socket *new_isk; 
 
     //if (!skb || !isk || !tcph)
     //   return -XXX;
 
     iph = (struct iphdr *)(skb->data_buf + OFFSET_IPHDR);
 
-    new_isk = alloc_isocket();
-    if (!new_isk)
-    {
-        free_skbuff(skb);
-        return -EAGAIN;
-    }
+    isk->remote_ip   = ntohl(iph->saddr);
+    isk->remote_port = ntohs(tcph->source);
 
-    memcpy(new_isk, isk, sizeof (struct i_socket));
-
-    new_isk->remote_ip   = ntohl(iph->saddr);
-    new_isk->remote_port = ntohs(tcph->source);
-
-    tcp_send_ack(new_isk, tcph, tcph->seq + 1, 1);
-    new_isk->status = SYN_RCVD;
-    list_add_tail(&new_isk->list, &active_queue);
+    tcp_send_ack(isk, tcph, 1234, ntohl(tcph->seq) + 1, SYN_Y, OPT_Y);
+    isk->status = SYN_RCVD;
+    
+    list_del(&isk->list);
+    list_add_tail(&isk->list, &active_queue);
     
     free_skbuff(skb);
     return 0;
@@ -213,16 +306,13 @@ int tcp_connect_request_handler(struct sk_buff *skb, struct i_socket *isk, struc
 
 void complete_establish(struct i_socket *isk)
 {
-    struct socket *socket;
-
-    if (!isk || isk->socket)
+    if (!isk)
         return;
 
-    socket = isk->socket;
-    isk->socket = NULL;
+    isk->status = ESTABLISHED;
 
-    socket->state = ESTABLISHED;
-    wake_up(&socket->wq);
+    printk("Complete An Establish\n");
+    wake_up(&isk->wq);
 }
 
 int tcp_data(struct i_socket *isk, struct tcphdr *tcph, struct sk_buff *skb)
@@ -247,17 +337,57 @@ int tcp_urg_handler()
 
 void print_tcp(struct sk_buff *skb)
 {
+    __packed unsigned char *ptr;
+    int opt_code  = 0;
+    int opt_size = 0;
+    int length = 0;
     struct tcphdr *tcph;
 
     tcph = (struct tcphdr *)(skb->data_buf + OFFSET_TCPHDR);
+    length = (tcph->doff * 4) - sizeof (struct tcphdr);
+    ptr = (unsigned char *)(tcph + 1);
+
     printk("source:  %d\n", ntohs(tcph->source));
     printk("dest:    %d\n", ntohs(tcph->dest));
+    printk("doff:    %d\n", tcph->doff);
     printk("seq:     %d\n", ntohl(tcph->seq));
     printk("ack_seq: %d\n", ntohl(tcph->ack_seq));
     printk("syn:     %d\n", tcph->syn);
     printk("ack:     %d\n", tcph->ack);
     printk("window:  %d\n", ntohs(tcph->window));
     printk("check:   %d\n", ntohs(tcph->check));
+    
+    while (length > 0)
+    {
+        while (length > 0 && *ptr == TCPOPT_NOP)
+        {
+            length--;
+            ptr++;
+        }
+        
+        if (!length)
+            return;
+
+        opt_code = *ptr++;
+        opt_size = *ptr++;
+
+        switch (opt_code)
+        {
+        case TCPOPT_EOL:
+            return;
+        case TCPOPT_MSS:
+            printk("TCPOPT_MSS: %d\n", ntohs(*(unsigned short *)ptr));
+            break;
+        case TCPOPT_SACK_PERM:
+            printk("TCPOPT_SACK\n");
+            break;
+        case TCPOPT_WINDOW:
+            printk("TCPOPT_WINDOW: %d\n", *ptr);
+            break;
+        }
+        ptr += (opt_size - 2);
+        length -= opt_size;
+    }
 }
 
 int tcp_received_data_handler(struct sk_buff *skb)
@@ -280,6 +410,7 @@ int tcp_received_data_handler(struct sk_buff *skb)
 	}
 	//list_add_tail(&skb->list, &isk->back_log);
 
+    printk("------------isk(%x)->status: %d--------------\n", isk, isk->status);
 	switch (isk->status)
 	{
 	case LAST_ACK:
@@ -362,7 +493,6 @@ int tcp_received_data_handler(struct sk_buff *skb)
 			free_skbuff(skb);
 			return 0;
 		}
-		tcp_send_ack(isk, tcph, tcph->seq + 1, 0);
 		set_tcp_options(isk, tcph);
 		isk->status = ESTABLISHED;
 		break;
@@ -373,7 +503,7 @@ int tcp_received_data_handler(struct sk_buff *skb)
 			free_skbuff(skb);
 			return 0;
 		}
-		if (!tcph->syn)
+		if (tcph->syn)
 		{
 			tcp_reset(isk, tcph);
 			free_skbuff(skb);
@@ -538,7 +668,12 @@ int tcp_listen(struct i_socket *isk, int backlog)
 
     isk->status = LISTEN;
     isk->backlog = backlog;
-    list_add_tail(&isk->list, &listen_queue);
+    
+    /* 此isk一直存在于原始的struct socket中,无需从listen_queue中查找,
+     * 所以不和放入listen_queue队列中,此队列用于存放调用了accept之后
+     * 的new_isk,详见tcp_accept函数
+     **/
+    //list_add_tail(&isk->list, &listen_queue);
     
     return 0;
 }
@@ -548,6 +683,32 @@ int tcp_send(struct i_socket *isk, char *buf, int len, int nonblock, unsigned fl
 	return 0;
 }
 
+int tcp_accept(struct i_socket *isk, struct sockaddr_in *sin, int *addrlen)
+{
+    struct i_socket *new_isk;
+
+    new_isk = alloc_isocket();
+    if (!new_isk)
+        return -EAGAIN;
+
+    new_isk->prot_type      = isk->prot_type;
+    new_isk->prot           = isk->prot;
+    new_isk->i_prot_opt     = isk->i_prot_opt;
+    new_isk->priv           = isk->priv;
+    new_isk->backlog        = isk->backlog;
+    new_isk->mss            = isk->mss;
+    new_isk->mtu            = isk->mtu;
+    new_isk->window         = isk->window;
+    new_isk->local_ip       = isk->local_ip;
+    new_isk->local_port     = isk->local_port;
+    new_isk->ssthresh       = isk->ssthresh;
+    new_isk->retries        = isk->retries;
+    new_isk->status         = isk->status;
+
+    list_add_tail(&new_isk->list, &listen_queue);
+
+    return new_isk;
+}
 
 struct i_proto_opt tcp_opt[] =
 {
@@ -559,7 +720,7 @@ struct i_proto_opt tcp_opt[] =
 	tcp_recvfrom,
 	tcp_connect,
 	tcp_bind,
-	NULL,
+	tcp_accept,
 	tcp_listen,
 	tcp_send,
 	tcp_recv

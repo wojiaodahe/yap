@@ -81,7 +81,7 @@ struct family_ops
 	int	(*close)	(struct socket *sock, struct socket *peer);
 	int	(*bind)		(struct socket *sock, struct sockaddr *umyaddr, int sockaddr_len);
 	int	(*connect)	(struct socket *sock, struct sockaddr *uservaddr, int sockaddr_len, int flags);
-	int	(*accept)	(struct socket *sock, struct socket *newsock, int flags);
+	int	(*accept)	(struct socket *sock, struct socket *newsock, int *addrlen);
 	int	(*read)		(struct socket *sock, char *ubuf, int size, int nonblock);
 	int	(*write)	(struct socket *sock, char *ubuf, int size, int nonblock);
 	int	(*ioctl)	(struct socket *sock, unsigned int cmd, unsigned long arg);

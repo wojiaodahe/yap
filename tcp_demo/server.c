@@ -7,6 +7,7 @@ int main()
 	struct sockaddr_in seraddr,
 					   peraddr;
 	char *buff = NULL;
+    int pid;
 
 	buff = (char *)malloc(BUFF_SIZE);
 
@@ -22,17 +23,27 @@ int main()
 	if (-1 == listen(sockfd, 10))
 		error_exit("listen");
 
-	if (-1 == (connfd = accept(sockfd, NULL, NULL)))
-		error_exit("accept");
     while (1)
     {
-        if (-1 == recv(connfd, buff, BUFF_SIZE, 0))
-            error_exit("recv");
-        printf("recv: %s\n", buff);
+        if (-1 == (connfd = accept(sockfd, NULL, NULL)))
+            error_exit("accept");
 
-        strcat(buff, "----echo");
-        if (-1 == send(connfd, buff, strlen(buff)+1, 0))
-            error_exit("send");
+        pid = fork();
+        if (pid == 0)
+        {
+#if 1
+            while (1)
+            {
+                if (-1 == recv(connfd, buff, BUFF_SIZE, 0))
+                    error_exit("recv");
+                printf("recv: %s\n", buff);
+
+                strcat(buff, "----echo");
+                if (-1 == send(connfd, buff, strlen(buff)+1, 0))
+                    error_exit("send");
+            }
+        }
+#endif
     }
 	close(connfd);
 	close(sockfd);

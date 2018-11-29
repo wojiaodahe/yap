@@ -32,7 +32,7 @@ int icmp_send(struct sk_buff *skb, struct ip_addr *dest, unsigned char type, uns
 	icmph->code = code;
 	icmph->type = type;
 	icmph->chksum = 0;
-	icmph->chksum = inet_chksum(icmph, SIZEOF_ICMPHDR + data_len);
+	icmph->chksum = __inet_chksum(icmph, SIZEOF_ICMPHDR + data_len);
 	return ip_send(skb, dest, PROTO_ICMP);
 }
 

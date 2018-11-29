@@ -74,9 +74,11 @@ int test_tcp(void *p)
 {
     int i;
     int ret = 0;
-    int fd;
+    int fd, new_fd;
     char buff[16];
     struct sockaddr_in seraddr;
+    struct sockaddr_in cliaddr;
+    int addrlen;
 	
     seraddr.sin_family = AF_INET;
 	seraddr.sin_port = htons(8000);
@@ -91,6 +93,9 @@ int test_tcp(void *p)
     ret = sys_listen(fd, 10);
     if (ret < 0)
         printk("sys_listen faild\n");
+
+    new_fd = sys_accept(fd, &cliaddr, &addrlen);
+    new_fd = sys_accept(fd, &cliaddr, &addrlen);
 
 	while (1)
 	{

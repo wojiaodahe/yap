@@ -66,5 +66,43 @@ struct tcphdr
 	unsigned short urg_ptr;
 }__attribute__((packed));
 
+/*
+ *	TCP option
+ */
+ 
+#define TCPOPT_NOP		        1	/* Padding */
+#define TCPOPT_EOL		        0	/* End of options */
+#define TCPOPT_MSS		        2	/* Segment size negotiating */
+#define TCPOPT_WINDOW		    3	/* Window scaling */
+#define TCPOPT_SACK_PERM        4       /* SACK Permitted */
+#define TCPOPT_SACK             5       /* SACK Block */
+#define TCPOPT_TIMESTAMP	    8	/* Better RTT estimations/PAWS */
+#define TCPOPT_MD5SIG		    19	/* MD5 Signature (RFC2385) */
+
+/*
+ *     TCP option lengths
+ */
+
+#define TCPOLEN_MSS            4
+#define TCPOLEN_WINDOW         3
+#define TCPOLEN_SACK_PERM      2
+#define TCPOLEN_TIMESTAMP      10
+#define TCPOLEN_MD5SIG         18
+
+#define TCPOPT_TS_N             0  /* 不支持时间戳 */
+#define TCPOPT_SACK_Y           1  /* 支持SACK */
+#define TCPOPT_WSCALE_Y         1  /* 支持窗口舍玩意儿  */
+#define TCPOPT_WSCALE_N         0
+#define TCPOPT_WSCALE_VALUE     7
+
+#define OPTIONED_TCPHEAD_SIZE  40 /* 带选项的tcp头大小  */
+
+#define ACK_Y   1
+#define ACK_N   0
+#define SYN_Y   1
+#define SYN_N   0
+#define OPT_Y   1
+#define OPT_N   0
+
 extern int tcp_process(struct sk_buff *skb);
 #endif

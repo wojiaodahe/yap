@@ -20,6 +20,9 @@ struct i_socket *alloc_isocket()
 	INIT_LIST_HEAD(&isk->wq.task_list);
 	INIT_LIST_HEAD(&isk->recv_data_head);
 	INIT_LIST_HEAD(&isk->send_data_head);
+	INIT_LIST_HEAD(&isk->unsend);
+	INIT_LIST_HEAD(&isk->unacked);
+	INIT_LIST_HEAD(&isk->list);
 
 	return isk;
 }
@@ -90,18 +93,6 @@ static int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	return isk->i_prot_opt->bind(isk, (struct sockaddr_in *)uaddr, addr_len);
 }
 
-static int inet_listen(struct socket *sock, int backlog)
-{
-	struct i_socket *isk;
-
-	if (!sock || !sock->data)
-		return -EBADF;
-
-	isk = (struct i_socket *)sock->data;
-
-	return isk->i_prot_opt->listen(isk, backlog);
-}
-
 static int inet_connect(struct socket *sock, struct sockaddr *uservaddr, int addrlen, int flags)
 {
 	struct i_socket *isk;
@@ -116,21 +107,36 @@ static int inet_connect(struct socket *sock, struct sockaddr *uservaddr, int add
 
 static int inet_accept(struct socket *sock, struct socket *newsock, int flags)
 {
-    int err;
 	struct i_socket *isk;
 
 	if (!sock || !sock->data)
 		return -EBADF;
 
 	isk = (struct i_socket *)sock->data;
-    err = isk->i_prot_opt->accept(isk, flags);
-    if (err < 0)
-        return err;
+    isk = isk->i_prot_opt->accept(isk, flags);
+    if (!isk)
+        return -EBADF;
 
-    wait_event(&newsock->wq, newsock->state == ESTABLISHED);
+    newsock->data = isk;
+    isk->socket   = newsock;
+
+    wait_event(&isk->wq, isk->status == ESTABLISHED);
     
     return 0;
 }
+
+static int inet_listen(struct socket *sock, int backlog)
+{
+	struct i_socket *isk;
+
+	if (!sock || !sock->data)
+		return -EBADF;
+
+	isk = (struct i_socket *)sock->data;
+
+	return isk->i_prot_opt->listen(isk, backlog);
+}
+
 
 static int inet_read(struct socket *sock, char *ubuf, int size, int noblock)
 {

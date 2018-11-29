@@ -1,6 +1,7 @@
 #include "inet_socket.h"
 #include "netdevice.h"
 #include "arp.h"
+#include "inet.h"
 
 #define BigLittleSwap16(n) ((((unsigned short)((n) & 0xff)) << 8) | (((n) & 0xff00) >> 8))
 
@@ -78,7 +79,7 @@ unsigned short inet_chksum(void *dataptr, unsigned short len)
   return htons((unsigned short)acc);
 }
 #else
-unsigned short inet_chksum(void *buffer, unsigned short size)
+unsigned short __inet_chksum(void *buffer, unsigned short size)
 {
 	__packed unsigned short *tmp;
 	unsigned long cksum=0;
@@ -95,6 +96,24 @@ unsigned short inet_chksum(void *buffer, unsigned short size)
 	cksum += (cksum >> 16);
 	return (unsigned short)(~cksum);
 }
+
+short int inet_check(struct ip_addr *sip, struct ip_addr *dip, unsigned char *buffer, unsigned short size, int proto)
+{
+    struct inet_pseudo_hdr *phead;
+    short int check_sum = 0;         //校验和字段置零；原来程序中定义为unsigned long
+
+    phead = (struct inet_pseudo_hdr *)(buffer - sizeof (struct inet_pseudo_hdr));      //缓存数组转换成结构体指针
+    phead->sip   = sip->addr;
+    phead->dip   = dip->addr;
+    phead->mbz   = 0;
+    phead->proto = proto;          
+    phead->len   = htons(size);
+
+    check_sum = __inet_chksum(phead, sizeof (struct inet_pseudo_hdr) + size);
+
+    return check_sum;
+}
+
 #endif
 
 int net_core_init(void)

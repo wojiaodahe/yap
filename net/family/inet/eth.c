@@ -39,6 +39,7 @@ int netif_rx(struct sk_buff *skb)
 	switch (ntohs(eth->h_proto))
 	{
 	case ETH_P_IP:
+        updata_arp_table(skb);
 		return ip_recv(skb);
 	case ETH_P_ARP:
 		return arp_process(skb);

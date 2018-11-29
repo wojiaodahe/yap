@@ -276,7 +276,7 @@ int ip_fragment(struct sk_buff *skb, struct ip_addr *destaddr, unsigned char pro
 		iphnew->version  = ((4 << 4) | 5);
 		iphnew->tot_len  = htons(ip_data_len + SIZEOF_IPHDR);
 		iphnew->check    = 0;
-		iphnew->check    = inet_chksum((char *)iphnew, SIZEOF_IPHDR);
+		iphnew->check    = __inet_chksum((char *)iphnew, SIZEOF_IPHDR);
 
 		skbnew->data_len = ip_data_len + SIZEOF_IPHDR + SIZEOF_ETHHDR;
 		ret = ip_do_send(skbnew, destaddr, proto, ndev);
@@ -316,7 +316,7 @@ int ip_send(struct sk_buff *skb, struct ip_addr *dest, unsigned char proto)
 	iph->version  = ((4 << 4) | 5);
 	iph->tot_len  = htons(skb->data_len - SIZEOF_ETHHDR);
 	iph->check    = 0;
-	iph->check    = inet_chksum((char *)iph, SIZEOF_IPHDR);
+	iph->check    = __inet_chksum((char *)iph, SIZEOF_IPHDR);
 	
 	return ip_do_send(skb, dest, proto, ndev);
 }

@@ -64,7 +64,7 @@ struct i_socket
     struct list_head unsend;
     struct list_head unacked;
 	
-    struct list_head      	list;
+    struct list_head list;
 };
 
 
@@ -103,9 +103,10 @@ struct i_proto_opt
 #define OFFSET_UDPDATA	(SIZEOF_ETHHDR + SIZEOF_IPHDR + SIZEOF_UDPHDR)
 #define OFFSET_TCPHDR	(SIZEOF_ETHHDR + SIZEOF_IPHDR)
 #define OFFSET_TCPDATA  (SIZEOF_ETHHDR + SIZEOF_IPHDR + SIZEOF_TCPHDR)
+#define OFFSET_TCPOPT   (SIZEOF_ETHHDR + SIZEOF_IPHDR + SIZEOF_TCPHDR)
 
 #define INET_PROTO_UDP	0x11
-#define INET_PROTe_TCP  0x06
+#define INET_PROTO_TCP  0x06
 
 #define  MAX_INET_PROTO 3 //tcp udp raw
 
