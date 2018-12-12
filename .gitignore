@@ -20,3 +20,8 @@
 *.map
 *.lst
 *.dep
+*.filename
+tags
+*.files
+*.tags
+*.tag

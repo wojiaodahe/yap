@@ -15,7 +15,7 @@ struct sk_buff
 	char use_flag;
 	char *data_buf;
 	unsigned short data_len;
-	unsigned short timeout;
+	unsigned int timeout;
 	struct net_device	*ndev;
 	struct list_head list;
 };

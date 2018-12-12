@@ -29,9 +29,10 @@ enum
 
 struct sliding_window
 {
-	void *head;
-	void *tail;
-	unsigned int segs;
+    unsigned int tot_size;
+    unsigned int tot_data_len;
+    struct list_head will_be_sent;
+    struct list_head waiting_ack;
 };
 
 struct tcp_seg
@@ -66,6 +67,8 @@ struct tcphdr
 	unsigned short urg_ptr;
 }__attribute__((packed));
 
+#define MAX_TCP_HEADER_SIZE 60
+
 /*
  *	TCP option
  */
@@ -89,20 +92,31 @@ struct tcphdr
 #define TCPOLEN_TIMESTAMP      10
 #define TCPOLEN_MD5SIG         18
 
-#define TCPOPT_TS_N             0  /* 不支持时间戳 */
-#define TCPOPT_SACK_Y           1  /* 支持SACK */
-#define TCPOPT_WSCALE_Y         1  /* 支持窗口舍玩意儿  */
-#define TCPOPT_WSCALE_N         0
+
+#define TS_Y        1
+#define TS_N        0
+#define ACK_Y       1
+#define ACK_N       0
+#define SYN_Y       1
+#define SYN_N       0
+#define OPT_Y       1
+#define OPT_N       0
+#define MSS_Y       1
+#define MSS_N       0
+#define SACK_Y      1
+#define SACK_N      0
+#define WSCALE_Y    1
+#define WSCALE_N    0
+
 #define TCPOPT_WSCALE_VALUE     7
 
-#define OPTIONED_TCPHEAD_SIZE  40 /* 带选项的tcp头大小  */
+#define ACK_NOW     1
+#define ACK_NOMAL   0
 
-#define ACK_Y   1
-#define ACK_N   0
-#define SYN_Y   1
-#define SYN_N   0
-#define OPT_Y   1
-#define OPT_N   0
+
+/* timeout  */
+/* 对方法了syn 但在这个时间之内没有再发ack过来,则取消此次连接 */
+#define SYN_RCVD_HOLDING_TIME   1000  
 
 extern int tcp_process(struct sk_buff *skb);
 #endif

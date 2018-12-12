@@ -162,7 +162,7 @@ int udp_recvfrom(struct i_socket *isk, char *ubuf, int len, int noblock,
 		return -EBADF;
 
 	if (!ubuf)
-		return -EINVAL;
+		return -EFAULT;
 
 	if (!sin)
 		return -EINVAL;

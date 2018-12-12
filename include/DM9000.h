@@ -99,7 +99,7 @@ typedef struct _arp_hdr 		//以太网头部+ARP首部结构
 void PrintfDM9000Reg(void);
 void Print_HostMAC(void);
 void TestDm9000(void);
-U32 receivepacket(U8 *datas);
+U32 receivepacket(void *);
 void arp_request(void);
 void testNetwork(void); 
 #endif /* _DM9000X_H_ */

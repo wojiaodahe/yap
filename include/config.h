@@ -23,7 +23,6 @@
 #define MAX_TASK_NUM					MAX_USER_PROGRAM_NUM
 #define TASK_STACK_SIZE					4096
 
-#define HZ								100
 
 #define MAX_UDP_LINK_NUM				64
 #define MAX_TCP_LINK_NUM				64

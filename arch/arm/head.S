@@ -42,7 +42,7 @@ MOD_MASK	equ 	0x1f
 	IMPORT  |Image$$RW_RAM1$$ZI$$Limit|  ; to zero initialise 
 
 _start
- 	b   Reset
+  	b   Reset
 
 
 HandleUndef

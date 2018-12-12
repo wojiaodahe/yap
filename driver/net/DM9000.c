@@ -111,43 +111,22 @@ U16 dm9000_reg_readPHY(U16 reg)
 	return data;
 }
 
-unsigned char Buffer[2000];
 static void int_issue(void *priv)
 {
 	U32 len;
     U8 status; 
     struct sk_buff *skb;
 
-    if (!skb)
-    {
-    	printk("No More Sk_Buff\n");
-    	panic();
-    }
-
     status = dm9000_reg_read(DM9000_ISR);
     dm9000_reg_write(DM9000_ISR, status);	//清除接收中断标志位
    
-   // printk("s: %x\n", status);
     if (status & 0x01)
 	{
         do 
         {
-            len= receivepacket(Buffer);
-            if (len != 0)
-            {
-            	 skb = alloc_skbuff(len);
-            	 if (!skb)
-            	 {
-            		 printk("No More SK_Buff\n");
-            		 panic();
-            	 }
-            	 skb->ndev = priv;
-            	 skb->data_len = len;
-        		 memcpy(skb->data_buf, Buffer, len);
-        		 netif_rx(skb);
-            }
+            len = receivepacket(priv);
         }
-        while (len> 0);
+        while (len > 0);
 	}
 	//ClearPending(BIT_EINT4_7);
 	//EINTPEND |= 1 << 7;
@@ -274,9 +253,11 @@ int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev)
 	return 0;
 }
 
-U32 receivepacket(U8 *datas)
+U32 receivepacket(void *priv)
 {
-	U16 i,tmp,status,len;
+    struct sk_buff *skb;
+    char *data;
+	U16 i, tmp, status, len;
     unsigned char GoodPacket;
 	U8 ready;
 	ready = 0;								//希望读取到"01H"
@@ -325,20 +306,36 @@ U32 receivepacket(U8 *datas)
 
         if( (len <= 1522))//!(status & 0xbf) &&
         {
-            for(i=0; i<len; i+=2)// 16 bit mode
+            skb = alloc_skbuff(len);
+            if (!skb)
             {
-                udelay(20);
-                tmp = DM_CMD;
-                datas[i] = tmp & 0x0ff;
-                datas[i + 1] = (tmp >> 8) & 0x0ff;
+                printk("No More SK_Buff %s\n", __func__);
+                panic();
             }
+            skb->ndev = priv;
+            skb->data_len = len;
+            data = skb->data_buf;
+
+            for(i = 0; i < len; i += 2)// 16 bit mode
+            {
+                //udelay(20);
+                tmp = DM_CMD;
+                data[i] = tmp & 0x0ff;
+                data[i + 1] = (tmp >> 8) & 0x0ff;
+            }
+            
+            netif_rx(skb);
         }
         else
+        {
+            printk("Recv A Big Packet Length: %d\n", len);
+            panic();
             return 0;
+        }
 #if 0
         printk("recv len: %d\n", len);
         for (i = 0; i < len; i++)
-            printk("%x ", datas[i]);
+            printk("%x ", data[i]);
         printk("\n");	
 #endif
         return len;

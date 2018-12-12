@@ -23,6 +23,7 @@ struct i_socket *alloc_isocket()
 	INIT_LIST_HEAD(&isk->unsend);
 	INIT_LIST_HEAD(&isk->unacked);
 	INIT_LIST_HEAD(&isk->list);
+	INIT_LIST_HEAD(&isk->ack_queue);
 
 	return isk;
 }

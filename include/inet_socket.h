@@ -38,14 +38,19 @@ struct i_socket
 	struct i_proto_opt 	  	*i_prot_opt;  				  /* inet 族每种协议的操作接口 */
 	struct i_socket_priv 	*priv;
 	struct socket		  	*socket;
+    unsigned int            recv_data_len;
+    unsigned short          read_ptr;
 	struct list_head      	recv_data_head;
 	struct list_head     	send_data_head;
 	struct list_head 		back_log;
     int                     backlog;
 	int 				  	errno;
 	wait_queue_t		  	wq;
+    unsigned char           sack;
 	unsigned short 			mss;
 	unsigned short        	mtu;
+    unsigned int            rto;
+    unsigned int            rtt;
 	unsigned short 		  	window;
 	volatile unsigned int 	flags;
 	volatile unsigned int 	status;
@@ -57,14 +62,19 @@ struct i_socket
 	unsigned short int		timeout;
 	unsigned short int		retries;
 	struct timer_list     	timer;
-   
-    unsigned int received_ack;
-    unsigned int send_seq;
 
-    struct list_head unsend;
-    struct list_head unacked;
+    unsigned char           max_ack_backlog;
+    unsigned char           ack_backlog;
+    struct list_head        ack_queue;
+   
+    unsigned int            received_ack;
+    unsigned int            ack_seq;
+    unsigned int            send_seq;
+
+    struct list_head        unsend;
+    struct list_head        unacked;
 	
-    struct list_head list;
+    struct list_head        list;
 };
 
 
@@ -104,6 +114,9 @@ struct i_proto_opt
 #define OFFSET_TCPHDR	(SIZEOF_ETHHDR + SIZEOF_IPHDR)
 #define OFFSET_TCPDATA  (SIZEOF_ETHHDR + SIZEOF_IPHDR + SIZEOF_TCPHDR)
 #define OFFSET_TCPOPT   (SIZEOF_ETHHDR + SIZEOF_IPHDR + SIZEOF_TCPHDR)
+
+#define get_iph(skb)    ((struct iphdr *)(skb->data_buf + OFFSET_IPHDR))
+#define get_tcph(skb)   ((struct tcphdr *)(skb->data_buf + OFFSET_TCPHDR))
 
 #define INET_PROTO_UDP	0x11
 #define INET_PROTO_TCP  0x06
