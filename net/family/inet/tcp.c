@@ -287,7 +287,7 @@ void tcp_build_options(struct sk_buff *skb, int if_mss, int mss, int if_ts, int 
 }
 
 void tcp_build_header(struct sk_buff *skb, struct i_socket *isk, struct tcphdr *tcph, \
-                      unsigned int seq, unsigned ack_seq, int ack, int syn)
+                      unsigned int seq, unsigned ack_seq, int ack, int syn, int fin)
 {
     struct tcphdr *tcp;
     int doff;
@@ -304,6 +304,7 @@ void tcp_build_header(struct sk_buff *skb, struct i_socket *isk, struct tcphdr *
     tcp->ack_seq    = htonl(ack_seq); 
     tcp->window     = htons(tcp_select_window(isk));
     tcp->syn        = syn;
+    tcp->fin        = fin;
 }
 
 int tcp_output(struct i_socket *isk, struct sk_buff *skb)
@@ -322,7 +323,7 @@ int tcp_output(struct i_socket *isk, struct sk_buff *skb)
 }
 
 void tcp_send_ack(struct i_socket *isk, struct tcphdr *tcph, \
-                  unsigned int seq, unsigned int ack_seq, int syn, unsigned char now)
+                  unsigned int seq, unsigned int ack_seq, int syn, int fin, unsigned char now)
 {
     struct sk_buff *skb;
     struct tcphdr *tcp;
@@ -337,7 +338,7 @@ void tcp_send_ack(struct i_socket *isk, struct tcphdr *tcph, \
     if (!skb)
         return;
     
-    tcp_build_header(skb, isk, tcph, seq, ack_seq, ACK_Y, syn);
+    tcp_build_header(skb, isk, tcph, seq, ack_seq, ACK_Y, syn, fin);
     if (syn)
         tcp_build_options(skb, MSS_Y, tcp_get_mss(), TS_N, SACK_Y, WSCALE_N, 0, 0, 0);
     else
@@ -428,7 +429,7 @@ int tcp_connect_request_handler(struct sk_buff *skb, struct i_socket *isk, struc
     add_timer(&isk->timer);
 
     isk->timeout = OS_Get_Kernel_Ticks();
-    tcp_send_ack(isk, tcph, isk->send_seq, isk->ack_seq, SYN_Y, ACK_NOMAL);
+    tcp_send_ack(isk, tcph, isk->send_seq, isk->ack_seq, SYN_Y, FIN_N, ACK_NOMAL);
     isk->status = SYN_RCVD;
     
     list_del(&isk->list);
@@ -609,13 +610,13 @@ void tcp_seg_sort(struct i_socket *isk, struct sk_buff *skb)
         /* 判断这个报文的seq是否是期待的seq  isk->ack_seq在三次握手之后被赋值*/
         if (isk->ack_seq != ntohl(tcph->seq)) 
         {
-            tcp_send_ack(isk, tcph, isk->send_seq, isk->ack_seq, SYN_N, ACK_NOW); /* 如果不是则回复期待的seq */
+            tcp_send_ack(isk, tcph, isk->send_seq, isk->ack_seq, SYN_N, FIN_N, ACK_NOW); /* 如果不是则回复期待的seq */
             break;
         }  
         else
         {
             isk->ack_seq = tcp_get_ackseq(skb_tmp); /* 如果是则更新期待的seq并发送之  */
-            tcp_send_ack(isk, tcph, isk->send_seq, isk->ack_seq, SYN_N, ACK_NOMAL);
+            tcp_send_ack(isk, tcph, isk->send_seq, isk->ack_seq, SYN_N, FIN_N, ACK_NOMAL);
         }
         list = list->next; /* 循环判断是否是上面注释当中的2、3种情况，如果是则发送所有可回复ack  */
     } 
@@ -640,7 +641,7 @@ int tcp_data(struct i_socket *isk, struct tcphdr *tcph, struct sk_buff *skb)
 
     seq = ntohl(tcph->seq);
     if (seq != isk->ack_seq)
-        tcp_send_ack(isk, tcph, isk->received_ack, isk->ack_seq, SYN_N, ACK_NOW);
+        tcp_send_ack(isk, tcph, isk->received_ack, isk->ack_seq, SYN_N, FIN_N, ACK_NOW);
     else
     {
     }
@@ -648,15 +649,23 @@ int tcp_data(struct i_socket *isk, struct tcphdr *tcph, struct sk_buff *skb)
     iph = get_iph(skb);
     tcp_data_len  = ntohs(iph->tot_len) - SIZEOF_IPHDR - tcph->doff * 4;
     if (tcph->psh)
-        tcp_send_ack(isk, tcph, isk->received_ack, ntohl(tcph->seq) + tcp_data_len, SYN_N, ACK_NOW);
+        tcp_send_ack(isk, tcph, isk->received_ack, ntohl(tcph->seq) + tcp_data_len, SYN_N, FIN_N, ACK_NOW);
     else
-        tcp_send_ack(isk, tcph, isk->received_ack, ntohl(tcph->seq) + tcp_data_len, SYN_N, ACK_NOMAL);
+        tcp_send_ack(isk, tcph, isk->received_ack, ntohl(tcph->seq) + tcp_data_len, SYN_N, FIN_N, ACK_NOMAL);
 
     return 0;
 }
 
-int tcp_fin_handler()
+int tcp_fin_handler(struct i_socket *isk, struct tcphdr *tcph)
 {
+    if (!isk || !tcph)
+        return -ENOENT;
+
+    tcp_send_ack(isk, tcph, isk->received_ack, ntohl(tcph->seq) + 1, SYN_N, FIN_N, ACK_NOW);
+    tcp_send_ack(isk, tcph, isk->received_ack, ntohl(tcph->seq) + 1, SYN_N, FIN_Y, ACK_NOW);
+
+    free_isock(isk);
+
     return 0;
 }
 
@@ -749,7 +758,6 @@ int tcp_received_data_handler(struct sk_buff *skb)
 		free_skbuff(skb);
 		return 0;///xxxxxxxxxxxxxxxxxxxxxxxx
 	}
-	//list_add_tail(&skb->list, &isk->back_log);
 
     printk("------------isk(%x)->status: %d--------------\n", isk, isk->status);
 	switch (isk->status)
@@ -799,7 +807,7 @@ int tcp_received_data_handler(struct sk_buff *skb)
 			return 0;
 		}
 		
-		if (tcph->fin && (tcp_fin_handler() < 0))
+		if (tcph->fin && (tcp_fin_handler(isk, tcph) < 0))
 		{
 			free_skbuff(skb);
 			free_isock(isk);

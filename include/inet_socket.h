@@ -42,7 +42,6 @@ struct i_socket
     unsigned short          read_ptr;
 	struct list_head      	recv_data_head;
 	struct list_head     	send_data_head;
-	struct list_head 		back_log;
     int                     backlog;
 	int 				  	errno;
 	wait_queue_t		  	wq;

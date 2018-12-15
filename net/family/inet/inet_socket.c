@@ -30,7 +30,32 @@ struct i_socket *alloc_isocket()
 
 void free_isock(struct i_socket *isk)
 {
-	kfree(isk);
+    list_del(&isk->list);
+
+    if (!list_empty(&isk->recv_data_head))
+        free_all_skb(&isk->recv_data_head);
+
+    if (!list_empty(&isk->send_data_head))
+        free_all_skb(&isk->recv_data_head);
+
+    if (!list_empty(&isk->ack_queue))
+        free_all_skb(&isk->ack_queue);
+
+    /*
+     * list_for_each(&isk->wq.task_list)
+     *     wake_up(all wait task);
+     *
+     * */
+
+#if 0
+    if (!list_empty(&isk->unsend))
+        free skb or free tcp_seg 
+
+    if (!list_empty(&isk->unacked))
+        free skb or free tcp_seg
+#endif
+
+    kfree(isk);
 }
 
 struct i_prot_opt *inet_get_opt(short int type)
@@ -62,8 +87,8 @@ static int inet_socket(struct socket *sock, int protocol)
     opt = inet_get_opt(sock->type);
     if (!opt)
     {
-        return -EINVAL;
         free_isock(isk);
+        return -EINVAL;
     }
     isk->i_prot_opt = opt;
     if (opt->proto_new_sock)

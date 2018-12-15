@@ -114,7 +114,9 @@ int ip_do_send(struct sk_buff *skb, struct ip_addr *dest, unsigned char proto, s
 	memcpy(eth->h_source, skb->ndev->macaddr, 6);
 	eth->h_proto = htons(ETH_P_IP);
 
-	skb->ndev->hard_start_xmit(skb, skb->ndev);
+//	skb->ndev->hard_start_xmit(skb, skb->ndev);
+    
+    netif_tx_queue(skb->ndev, skb);
 
 	return 0;
 }

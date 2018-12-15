@@ -7,11 +7,12 @@
 #define DM9000_IRQ			7
 
 
-#define HZ                  100
+#define HZ                      100
 
 #define OS_INIT_PROCESS_PID		0
 #define OS_SYS_PROCESS_PID		1
 #define OS_IDLE_PROCESS_PID		2
+#define OS_NETIF_PROCESS_PID    3 
 
 #endif
 

@@ -23,6 +23,5 @@ struct ethhdr
 	unsigned short	h_proto;		/* packet type ID field	*/
 }__attribute__((packed));
 
-extern int netif_rx(struct sk_buff *skb);
 
 #endif /* INCLUDE_ETH_H_ */

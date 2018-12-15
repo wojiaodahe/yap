@@ -73,9 +73,8 @@ struct sk_buff *alloc_skbuff(unsigned short len)
 		return NULL;
 	}
 	INIT_LIST_HEAD(&skb->list);
-
-
-	return skb;
+	
+    return skb;
 #endif
 }
 
@@ -89,6 +88,7 @@ void free_skbuff(struct sk_buff *skb)
 	list_del(&skb->list);
 	memset(skb, 0, sizeof (struct sk_buff));
 #else
+	list_del(&skb->list);
 	kfree(skb->data_buf);
 	kfree(skb);
 #endif
@@ -556,6 +556,7 @@ int socket_init(void)
 	struct socket *sock;
 	int i;
 
+
 	/* Release all sockets. */
 	for (sock = sockets; sock <= last_socket; ++sock)
 		sock->state = SS_FREE;
@@ -563,6 +564,8 @@ int socket_init(void)
 	/* Initialize all address (protocol) families. */
 	for (i = 0; i < MAX_PROTO; ++i)
 		family_ops[i] = NULL;
+
+    netif_init();
 
 	return inet_family_init();
 }

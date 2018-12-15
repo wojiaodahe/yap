@@ -97,6 +97,8 @@ struct tcphdr
 #define TS_N        0
 #define ACK_Y       1
 #define ACK_N       0
+#define FIN_Y       1
+#define FIN_N       0
 #define SYN_Y       1
 #define SYN_N       0
 #define OPT_Y       1

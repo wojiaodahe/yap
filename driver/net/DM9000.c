@@ -119,6 +119,9 @@ static void int_issue(void *priv)
 
     status = dm9000_reg_read(DM9000_ISR);
     dm9000_reg_write(DM9000_ISR, status);	//清除接收中断标志位
+    
+    if (status & 0x02)
+        dm9000_tx_done((struct net_device *)priv);
    
     if (status & 0x01)
 	{
@@ -193,60 +196,65 @@ void DM9000_init(char *mac_addr)
 	dm9000_reg_write(DM9000_NSR,  0x2c);	//清除各种状态标志位
 	dm9000_reg_write(DM9000_ISR,  0x3f);	//清除所有中断标志位
 	//初始化设置步骤: 7
-	dm9000_reg_write(DM9000_IMR, 0x81);		//中断使能	
+	dm9000_reg_write(DM9000_IMR, 0x83);		//中断使能	
 
 }
+
+unsigned int queue_pkt_len = 0;
+unsigned int tx_pkt_cnt    = 0; 
+
+void dm9000_tx_done(struct net_device *ndev)
+{
+    int tx_status;
+
+    tx_status = dm9000_reg_read(DM9000_NSR);
+
+    if (tx_status & ((1 << 2) | (1 << 3)))
+    {
+        tx_pkt_cnt--;
+        if (tx_pkt_cnt > 0)
+        {
+            dm9000_reg_write(DM9000_TXPLH, (queue_pkt_len >> 8) & 0x0ff);
+            dm9000_reg_write(DM9000_TXPLL, queue_pkt_len & 0x0ff);
+            dm9000_reg_write(DM9000_TCR, 0x01);		/* 发送数据到以太网上 */
+        }
+        
+        netif_wake_queue(ndev);
+    }
+}
+
 int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev)
 {
 	U32 len,i;
 	U8 tmp;
 	U8 *datas;
-	U32 length;
 
-	datas  = skb->data_buf;
-	length = skb->data_len;
+	datas = skb->data_buf;
+	len = skb->data_len;							//把发送长度写入
 
+    if (tx_pkt_cnt > 1)
+        return NETDEV_TX_BUSY;
+
+    tx_pkt_cnt++;
 	dm9000_reg_write(DM9000_IMR,0x80);		//先禁止网卡中断，防止在发送数据时被中断干扰	
-	len = length;							//把发送长度写入
-	dm9000_reg_write(DM9000_TXPLH, (len>>8) & 0x0ff);
-	dm9000_reg_write(DM9000_TXPLL, len & 0x0ff);
 	DM_ADD = DM9000_MWCMD;					//存储器读地址自动增加的读数据命令
 	for(i=0; i<len; i+=2)					//16 bit mode
 	{
 		udelay(2);
 		DM_CMD = datas[i] | (datas[i+1]<<8);
 	}
-	dm9000_reg_write(DM9000_TCR, 0x01);		//发送数据到以太网上
-
-	while(1)//等待数据发送完成
-	{
-		U8 data;
-		data = dm9000_reg_read(DM9000_TCR);//DM9000_NSR
-		if((data&0x01) == 0x00) 
-            break;
-	}
-	tmp = dm9000_reg_read(DM9000_NSR);
-
-	if((tmp & 0x0f) == 0x04)
-	{
-		if((dm9000_reg_read(DM9000_TSR1)&0xfc) == 0x00)
-        {
-		
-        }
-		else
-			printk("TSR1 Send Failed\n");
-	}
-	else
-	{
-		if((dm9000_reg_read(DM9000_TSR2)&0xfc) == 0x00)
-        {
-		
-        }
-		else
-			printk("TSR2 Send Failed\n");
-	}
-	dm9000_reg_write(DM9000_NSR, 0x2c);		//清除状态寄存器，由于发送数据没有设置中断，因此不必处理中断标志位
-	dm9000_reg_write(DM9000_IMR, 0x81);		//DM9000网卡的接收中断使能
+    if (tx_pkt_cnt == 1)
+    {
+        dm9000_reg_write(DM9000_TXPLH, (len>>8) & 0x0ff);
+        dm9000_reg_write(DM9000_TXPLL, len & 0x0ff);
+	    dm9000_reg_write(DM9000_TCR, 0x01);		//发送数据到以太网上
+    }
+    else
+    {
+        queue_pkt_len = len;
+        netif_stop_queue(ndev);
+    }
+	dm9000_reg_write(DM9000_IMR,0x83);	
 
 	free_skbuff(skb);
 
@@ -522,12 +530,14 @@ int dm9000_module_init()
 	char mac[6] = {0x00, 0x1c, 0x82, 0x00, 0x33, 0x1f};
 	DM9000_init(mac);
 	memcpy(dm9000_dev.macaddr, mac, 6);
+    INIT_LIST_HEAD(&dm9000_dev.tx_queue);
 	register_netdev(&dm9000_dev);
 	return 0;
 }
 
 void dm9000_mdule_exit()
 {
+
 }
 
 

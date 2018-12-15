@@ -30,7 +30,7 @@ void print_eth_head(struct sk_buff *skb)
 
 }
 
-int netif_rx(struct sk_buff *skb)
+int eth_recv(struct sk_buff *skb)
 {
 	struct ethhdr *eth;
 

@@ -9,6 +9,17 @@
 
 #define IF_NAME_SIZE	16
 
+enum netdev_queue_state_t
+{
+	__QUEUE_STATE_XOFF,
+	__QUEUE_STATE_FROZEN,
+};
+
+
+#define NETDEV_TX_OK        0
+#define NETDEV_TX_BUSY      1
+#define NETDEV_TX_LOCKED    -1
+
 struct net_device_stats
 {
 	unsigned long	rx_packets;		/* total packets received	*/
@@ -54,8 +65,10 @@ struct net_device
 	unsigned int 			gw;
 	unsigned int 			netmask;
 	unsigned short 			mtu;
+    void                    *priv;
 	struct device			dev;
 	struct list_head 		dev_list;
+    struct list_head        tx_queue;
 	struct net_device_stats	stats;
 	int	 (*init)(struct net_device *dev);
 	void (*uninit)(struct net_device *dev);
@@ -65,7 +78,10 @@ struct net_device
 	int	 (*set_mac_address)(struct net_device *dev, void *addr);
 };
 
-#define to_net_dev(d) container_of(d, struct net_device, dev)
+#define to_net_dev(d)               container_of(d, struct net_device, dev)
+#define net_device_set_priv(ndev, priv)   ndev->priv = priv
+#define net_device_get_priv(ndev)         ndev->priv
+
 
 extern int register_netdev(struct net_device *dev);
 extern void net_device_core_init(void);
