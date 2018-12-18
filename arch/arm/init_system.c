@@ -1,13 +1,10 @@
 #include "s3c24xx.h"
 #include "system.h"
 #include "config.h"
+#include "s3c24xx_irqs.h"
 
 extern void enable_irq(void);
 extern void disable_irq(void);
-extern void umask_int(unsigned int);
-extern void usubmask_int(unsigned int offset);
-
-
 
 /*
  * 关闭WATCHDOG，否则CPU会不断重启
@@ -296,7 +293,12 @@ void init_clock(void)
     }
 }
 
-void timer_init(void)
+void s3c24xx_timer4_irq_handler(void *prv)
+{
+    OS_Clock_Tick();
+}
+
+int timer_init(void)
 {
 	TCFG0 |= (100 << 8);
     TCFG1 |= (2 << 16);
@@ -308,10 +310,7 @@ void timer_init(void)
 	TCON |= (1 << 20);
 	TCON &= ~(1 << 21);
 
-	umask_int(14);
-    umask_int(28);
-    usubmask_int(0);
-	enable_irq();
+    return request_irq(IRQ_TIMER4, s3c24xx_timer4_irq_handler, 0, 0);
 }
 
 

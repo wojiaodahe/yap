@@ -172,7 +172,7 @@ void IOSetInit(struct net_device *ndev)
 	EINTMASK &= ~(1 << 7);
 	SRCPND = SRCPND | (0x1 << 4);
 	INTPND = INTPND | (0x1 << 4);
-	put_irq_handler(ndev->irq, int_issue, ndev);
+	setup_irq_handler(ndev->irq, int_issue, ndev);
 	INTMSK &= ~(1 << 4);
 }
 

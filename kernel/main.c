@@ -222,7 +222,6 @@ extern void init_user_program_space(void);
 extern int test_platform(void);
 int kernel_main()
 {
-	s3c24xx_init_tty();
     init_key_irq();
 	
 	init_user_program_space();

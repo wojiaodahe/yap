@@ -118,7 +118,7 @@ int init_s3c24xx_uart()
     UMCON0  = 0x00;     // 不使用流控
     UBRDIV0 = UART_BRD; // 波特率为115200
 
-    return put_irq_handler(OS_IRQ_UART_0, uart_isr, &s3c24xx_uart_drv);
+    return request_irq(28, uart_isr, 0, &s3c24xx_uart_drv);
 
 }
 

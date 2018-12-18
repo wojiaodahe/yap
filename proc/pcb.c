@@ -51,8 +51,8 @@ pcb_t *pcb_list_init(void)
 
     if ((tmp = (pcb_t *)alloc_pcb()) == (void *)0)
     {
-        printk("kmalloc error\r\n");
-        return (void *)0;
+        printk("%s failed\n", __func__);
+        panic();
     }
 
 	tmp->next = tmp;

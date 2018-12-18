@@ -98,11 +98,11 @@ int key_module_init(void)
 	key_fops.close = key_close;
 	key_fops.ioctl = key_ioctl;
 	key_fops.read  = key_read;
-
-	ret = put_irq_handler(KEY1_IRQ, key_irq, 0);
+/*
+	ret = setup_irq_handler(KEY1_IRQ, key_irq, 0);
 	if (ret < 0)
 		return ret;
-
+*/
 	ret = register_chrdev(key_major, "key", &key_fops);
 	if (ret < 0)
 		return ret;

@@ -41,6 +41,8 @@ void free_isock(struct i_socket *isk)
     if (!list_empty(&isk->ack_queue))
         free_all_skb(&isk->ack_queue);
 
+    del_timer(&isk->timer);
+
     /*
      * list_for_each(&isk->wq.task_list)
      *     wake_up(all wait task);
@@ -55,6 +57,7 @@ void free_isock(struct i_socket *isk)
         free skb or free tcp_seg
 #endif
 
+    memset(isk, 0, sizeof (struct i_socket));
     kfree(isk);
 }
 
@@ -148,7 +151,7 @@ static int inet_accept(struct socket *sock, struct socket *newsock, int flags)
 
     wait_event(&isk->wq, isk->status == ESTABLISHED);
     
-    return 0;
+    return isk->errno;
 }
 
 static int inet_listen(struct socket *sock, int backlog)
@@ -257,22 +260,22 @@ int inet_register_proto(struct i_proto_opt *opt)
 
 static struct family_ops inet_proto_ops =
 {
-  AF_INET,
+    AF_INET,
 
-  inet_socket,
-  inet_dup,
-  inet_close,
-  inet_bind,
-  inet_connect,
-  inet_accept,
-  inet_read,
-  inet_write,
-  inet_ioctl,
-  inet_listen,
-  inet_send,
-  inet_recv,
-  inet_sendto,
-  inet_recvfrom,
+    inet_socket,
+    inet_dup,
+    inet_close,
+    inet_bind,
+    inet_connect,
+    inet_accept,
+    inet_read,
+    inet_write,
+    inet_ioctl,
+    inet_listen,
+    inet_send,
+    inet_recv,
+    inet_sendto,
+    inet_recvfrom,
 };
 
 void inet_family_init()

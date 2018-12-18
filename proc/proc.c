@@ -309,9 +309,9 @@ int OS_INIT_PROCESS(void *argv)
 	int fd_stdout;
 	int fd_stderr;
 
-	timer_init();
-
+	sys_timer_init();
 	disable_irq();
+
 	fd_stdout = sys_open("/dev/stdout", 0, 0);
 	if (fd_stdout < 0)
 	{
@@ -392,7 +392,10 @@ int OS_Init(void)
 		panic();
 	}
 	
-	ret = vfs_init();
+    s3c24xx_init_irq();
+	s3c24xx_init_tty();
+	
+    ret = vfs_init();
 	if (ret < 0)
 	{
 		printk("vfs init error\n");
@@ -431,8 +434,8 @@ int OS_Init(void)
 	current = pcb_head->next;
 
 	timer_list_init();
-
-    return put_irq_handler(OS_IRQ_CLOCK_TICK, OS_Clock_Tick, 0);
+    
+    return 0;
 }
 
 int proc2pid(pcb_t *proc)

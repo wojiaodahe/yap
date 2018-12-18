@@ -155,7 +155,7 @@ void IOSetInit(void)
 	EINTMASK &= ~(1 << 7);//??EINT7
 	SRCPND = SRCPND | (0x1 << 4);
 	INTPND = INTPND | (0x1 << 4);
-	put_irq_handler(DM9000_IRQ, int_issue, &dm9000_dev);
+	request_irq(35, int_issue, 0, &dm9000_dev);
 	INTMSK &= ~(1 << 4);
 }
 

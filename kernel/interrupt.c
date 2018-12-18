@@ -1,142 +1,98 @@
-#include "s3c24xx.h"
 #include "kernel.h"
+#include "error.h"
 #include "interrupt.h"
+#include "common.h"
+#include "kmalloc.h"
 
+static struct irq_desc *irq_desc_table[MAX_IRQ_NUMBER];
 
-void enable_irq(void)
+void deliver_irq(int irq_num)
 {
-	int r4;
-	__asm  
-	{
-		mrs r4, cpsr
-		bic r4, r4, #0x80
-		msr cpsr_cxsf, r4
-	}
-}
+    struct irq_desc *desc;
 
-void disable_irq(void)
-{
-	int r4;
-	__asm 
-	{
-		mrs r4, cpsr
-		orr r4, r4, #0x80
-		msr cpsr_cxsf, r4
-	}
-}
+    if (irq_num >= MAX_IRQ_NUMBER)
+        return;
 
-void umask_int(unsigned int offset)
-{
-	INTMSK &= ~(1 << offset);
-}
-
-void usubmask_int(unsigned int offset)
-{
-    INTSUBMSK &= ~(1 << offset);
-}
-
-
-static irq_handler irq_table[MAX_IRQ_NUMBER];
-int put_irq_handler(unsigned int irq_num, irq_server irq_handler, void *priv)
-{
-    int i;
-
-    for (i = 0; i < MAX_IRQ_NUMBER; i++)
+    desc = irq_desc_table[irq_num];
+    
+    if (desc && desc->irq_handler)
     {
-        if (irq_table[i].irq_num == 0)
+        desc->count++;
+        desc->irq_handler(desc->priv);
+    }
+}
+
+int register_irq_desc(struct irq_desc *desc)
+{
+    int irq_num;
+
+    if (!desc)
+        return -EINVAL;
+
+    for (irq_num = 0; irq_num < MAX_IRQ_NUMBER; irq_num++)
+    {
+        if (irq_desc_table[irq_num] == NULL)
         {
-            //disable_irq();
-            irq_table[i].irq_num = irq_num;
-            irq_table[i].irq_handler = irq_handler;
-            irq_table[i].priv = priv;
-            //enable_irq();
+            irq_desc_table[irq_num] = desc;
             return 0;
         }
     }
 
-    return -1;
+    return -ENOMEM;
 }
 
-void do_irq(int irq_num)
+void unregister_irq_desc(unsigned int irq_num)
 {
-    int i;
+    struct irq_desc *desc;
+    
+    if (irq_num >= MAX_IRQ_NUMBER)
+        return;
+    desc = irq_desc_table[irq_num];
 
-    for (i = 0; i < MAX_IRQ_NUMBER; i++)
-    {
-        if (irq_table[i].irq_num == irq_num)
-        {
-            irq_table[i].irq_handler(irq_table[i].priv);
-            break;
-        }
-    }
+    kfree(desc);
+    irq_desc_table[desc->irq_num] = NULL;
 }
 
-void common_irq_handler()
+int request_irq(int irq_num, irq_server irq_handler, unsigned int flag, void *priv)
 {
-	int bit;
-    unsigned long oft = INTOFFSET;
+    struct irq_desc *desc;
+    
+    if (!irq_handler)
+        return -EINVAL;
 
-    SRCPND |= (1 << oft);
-    INTPND |= (1 << oft);
+    if (irq_num >= MAX_IRQ_NUMBER)
+        return -ENOMEM;
+   
+    desc = irq_desc_table[irq_num];
+    if (desc->irq_handler) 
+        return -EBUSY;
+    
+    desc->priv = priv;
+    desc->irq_handler = irq_handler;
+    desc->set_flag(irq_num, flag);
+    desc->unmask(irq_num);
 
-	//~{GeVP6O~}
-    if (oft == 4) 
-    {
-        for (bit = 4; bit < 24; bit++)
-        {
-        	if (EINTPEND & (1 << bit))
-        	{
-        		oft = bit;
-        		break;
-        	}
-        }
-        EINTPEND |= (1 << bit);   // EINT4_7~{:OSC~}IRQ4
-    }
-
-#if 0
-    switch (oft)
-    {
-        // K1~{1;04OB~}
-        case 1: 
-        {   
-            GPBDAT |= (0xF << 5);     // ~{KySP~}LED~{O(Cp~}
-            GPBDAT &= ~~(1 << 5);      // LED1~{5cAA~}
-            break;
-        }
-        
-        // K2~{1;04OB~}
-        case 4:
-        {   
-            GPBDAT |= (0xF << 5);   // ~{KySP~}LED~{O(Cp~}
-            GPBDAT &= ~~(1 << 6);      // LED2~{5cAA~}
-			printk("---------------\r\n");
-            break;
-        }
-
-        // K3~{1;04OB~}
-        case 2:
-        {   
-            GPBDAT |= (0xF << 5);   // ~{KySP~}LED~{O(Cp~}
-            GPBDAT &= ~~(1 << 7);      // LED3~{5cAA~}
-			printk("---------------\r\n");
-            break;
-        }
-
-        // K4~{1;04OB~}
-        case 0:
-        {   
-            GPBDAT |= (0xF << 5);   // ~{KySP~}LED~{O(Cp~}
-            GPBDAT &= ~~(1 << 8);      // LED4~{5cAA~}
-			printk("---------------\r\n");
-            break;
-        }
-
-        default:
-            break;
-    }
-	//enable_irq();
-	#endif
-
-    do_irq(oft);
+    return 0;
 }
+
+void free_irq(int irq_num)
+{
+    struct irq_desc *desc;
+
+    if (irq_num >= MAX_IRQ_NUMBER)
+        return;
+    
+    desc = irq_desc_table[irq_num];
+    if (!desc)
+        return;
+
+    desc->irq_handler = NULL;
+    desc->flag = 0;
+    desc->count = 0;
+
+    /*
+     * wakt_up(all wait for threads)
+     * */
+}
+
 

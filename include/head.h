@@ -13,8 +13,6 @@ extern void put_char(unsigned char);
 extern int OS_Init(void);
 extern int create_process(int (*f)(void *), void *args, int);
 extern void OS_Start(void);
-extern void umask_int(unsigned int offset);
-extern void usubmask_int(unsigned int offset);
 extern void enable_irq(void);
 extern void disable_irq(void);
 extern int send_recv(int function, int src_dest, MESSAGE* msg);

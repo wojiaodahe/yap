@@ -116,11 +116,15 @@ int tcp_if_timeout(struct i_socket *isk, unsigned int time)
 
 static void tcp_timer_entry(void *data)
 {
+    int ret;
     struct sk_buff *skb;
     struct list_head *list;
     struct i_socket *isk = data;
     struct ip_addr dest;
     unsigned int tick;
+
+    if (!isk)
+        return;
     
     tick = OS_Get_Kernel_Ticks();
     switch (isk->status)
@@ -135,12 +139,51 @@ static void tcp_timer_entry(void *data)
         }
         break;
     case SYN_SENT:
-        break;
+        if (isk->retries)
+        {
+            isk->retries--;
+            isk->timeout = tick;
+            ret = tcp_send_syn(isk);
+            if (ret < 0)
+            {
+                del_timer(&isk->timer);
+                isk->status = CLOSED;
+                isk->errno = ret;
+
+                /* xxxxxxxxxxxxxxxxxxxxxxxx
+                 * wake_up 上层应用
+                 * */
+            }
+            else
+            {
+                ret = mod_timer(&isk->timer, 3);
+                if (ret < 0)
+                {
+                    del_timer(&isk->timer);
+                    isk->status = CLOSED;
+                    isk->errno = ret;
+                    /* xxxxxxxxxxxxxxxxxxxxxxxx
+                     * wake_up 上层应用
+                     * */
+                }
+            }
+        }
+        else
+        {
+            del_timer(&isk->timer);
+            isk->errno = -ETIMEDOUT;
+            isk->status = CLOSED;
+            /* xxxxxxxxxxxxxxxxxxxxxxx
+             * wake_up 上层应用
+             * */
+        }
+        return;
     case ESTABLISHED:
         break;
     default:
         return;
     }
+
 #if 0
     if (!list_empty(&isk->ack_queue))
     {
@@ -171,7 +214,31 @@ static void tcp_timer_entry(void *data)
 
 int tcp_send_syn(struct i_socket *isk)
 {
-	return 0;
+    unsigned int seq;
+    struct sk_buff *skb;
+    struct tcphdr *tcph;
+    struct ip_addr dest;
+    struct ip_addr src;
+
+    skb = alloc_skbuff(SIZEOF_ETHHDR + SIZEOF_IPHDR +  SIZEOF_TCPHDR + 20);
+    if (!skb)
+        return -ENOMEM;
+
+    seq = tcp_generate_a_seq();
+    isk->send_seq = seq;
+
+    tcp_build_header(skb, isk, htons(isk->remote_port), htons(isk->local_port), seq, 0, ACK_N, SYN_Y, FIN_N);
+    tcp_build_options(skb, MSS_Y, 1460, TS_N, SACK_Y, WSCALE_N, 0, 0, 0);
+
+    tcph = get_tcph(skb);
+    skb->data_len = (SIZEOF_ETHHDR + SIZEOF_IPHDR + tcph->doff * 4);
+    
+    dest.addr = htonl(isk->remote_ip);
+    src.addr = htonl(isk->local_ip);
+    tcph->check      = 0;
+    tcph->check      = inet_check(&src, &dest, (unsigned char *)tcph, tcph->doff * 4, INET_PROTO_TCP);
+
+	return ip_send(skb, &dest, PROTO_TCP);
 }
 
 int tcp_ack_handler(struct i_socket *isk, struct tcphdr *tcph)
@@ -222,7 +289,7 @@ unsigned short tcp_get_mss(void)
     return 1460;
 }
 
-unsigned int generate_a_seq(void)
+unsigned int tcp_generate_a_seq(void)
 {
     return 0x1234;
 }
@@ -286,19 +353,19 @@ void tcp_build_options(struct sk_buff *skb, int if_mss, int mss, int if_ts, int 
     tcph->doff = doff / 4;
 }
 
-void tcp_build_header(struct sk_buff *skb, struct i_socket *isk, struct tcphdr *tcph, \
-                      unsigned int seq, unsigned ack_seq, int ack, int syn, int fin)
+void tcp_build_header(struct sk_buff *skb, struct i_socket *isk, unsigned short source, \
+                      unsigned short dest, unsigned int seq, unsigned ack_seq, int ack, int syn, int fin)
 {
     struct tcphdr *tcp;
     int doff;
 
-    if (!skb || !isk || !tcph)
+    if (!skb || !isk)
         return;
 
     tcp = get_tcph(skb);
    
-    tcp->source     = tcph->dest;
-    tcp->dest       = tcph->source;
+    tcp->source     = source;
+    tcp->dest       = dest;
     tcp->ack        = ack;
     tcp->seq        = htonl(seq);
     tcp->ack_seq    = htonl(ack_seq); 
@@ -338,7 +405,7 @@ void tcp_send_ack(struct i_socket *isk, struct tcphdr *tcph, \
     if (!skb)
         return;
     
-    tcp_build_header(skb, isk, tcph, seq, ack_seq, ACK_Y, syn, fin);
+    tcp_build_header(skb, isk, tcph->dest, tcph->source, seq, ack_seq, ACK_Y, syn, fin);
     if (syn)
         tcp_build_options(skb, MSS_Y, tcp_get_mss(), TS_N, SACK_Y, WSCALE_N, 0, 0, 0);
     else
@@ -418,7 +485,7 @@ int tcp_connect_request_handler(struct sk_buff *skb, struct i_socket *isk, struc
     iph = (struct iphdr *)(skb->data_buf + OFFSET_IPHDR);
 
     isk->received_ack = 0;
-    isk->send_seq     = generate_a_seq(); 
+    isk->send_seq     = tcp_generate_a_seq(); 
     isk->remote_ip    = ntohl(iph->saddr);
     isk->remote_port  = ntohs(tcph->source);
     isk->ack_seq      = ntohl(tcph->seq) + 1;
@@ -464,9 +531,9 @@ void complete_establish(struct i_socket *isk)
      * 队列最长不能超过9
      * 
      * 然而!!!!
-     * 根据上面一系列 isk->max_ack_backlog * (RTT / 2) = RTO
+     * 根据上面一系得出这个公式 isk->max_ack_backlog * (RTT / 2) = RTO
      * 得出:isk->max_ack_backlog = RTO * 2 / RTT = (2 * RTT) * 2 / RTT = 4
-     *
+     * ack队列不能超过4 ?
      * 有缺陷,再改进
      */
 
@@ -664,8 +731,6 @@ int tcp_fin_handler(struct i_socket *isk, struct tcphdr *tcph)
     tcp_send_ack(isk, tcph, isk->received_ack, ntohl(tcph->seq) + 1, SYN_N, FIN_N, ACK_NOW);
     tcp_send_ack(isk, tcph, isk->received_ack, ntohl(tcph->seq) + 1, SYN_N, FIN_Y, ACK_NOW);
 
-    free_isock(isk);
-
     return 0;
 }
 
@@ -764,7 +829,7 @@ int tcp_received_data_handler(struct sk_buff *skb)
 	{
 	case LAST_ACK:
 		isk->errno 	= -ECONNRESET;
-		isk->status 	= CLOSED;
+		isk->status = CLOSED;
 		free_skbuff(skb);
 		free_isock(isk);
 		return 0;
@@ -807,11 +872,19 @@ int tcp_received_data_handler(struct sk_buff *skb)
 			return 0;
 		}
 		
-		if (tcph->fin && (tcp_fin_handler(isk, tcph) < 0))
+		if (tcph->fin)
 		{
-			free_skbuff(skb);
-			free_isock(isk);
-			return 0;
+            if (tcp_fin_handler(isk, tcph) < 0)
+		    {
+                isk->errno  = -ECONNRESET;
+                isk->status = CLOSED;
+                free_isock(isk);
+            }
+            else
+                isk->status = LAST_ACK;
+            
+            free_skbuff(skb);
+            return 0;
 		}
 
 		if (tcp_data(isk, tcph, skb) < 0)
@@ -842,8 +915,11 @@ int tcp_received_data_handler(struct sk_buff *skb)
 			free_skbuff(skb);
 			return 0;
 		}
+
+        isk->send_seq = htonl(tcph->ack_seq);
+        tcp_send_ack(isk, tcph, isk->send_seq, isk->ack_seq, SYN_N, FIN_N, ACK_NOW);
 		tcp_set_options(isk, skb);
-		isk->status = ESTABLISHED;
+        complete_establish(isk);
 		break;
 	case SYN_RCVD:
 		if (tcp_ack_handler(isk, tcph) < 0)
@@ -942,22 +1018,26 @@ int tcp_do_connect(struct i_socket *isk)
 
 	isk->timer.expires = 3;
 	isk->timer.data    = isk;
-	isk->timer.function = tcp_connect_syn_timer_callback;
+	isk->timer.function = tcp_timer_entry;
 
 	ret = tcp_send_syn(isk);
 	if (ret < 0)
 		return ret;
 	
 	isk->status = SYN_SENT;
+    isk->timeout = OS_Get_Kernel_Ticks();
 	ret = add_timer(&isk->timer);
 	if (ret < 0)
 		return ret;
 	
+    list_add(&isk->list, &active_queue);
 	wait_event(&isk->wq, isk->status != SYN_SENT);
-		
+	
+    if (isk->errno)
+        list_del(&isk->list);
+
 	return isk->errno;
 }
-
 
 void tcp_close(struct i_socket *isk, int timeout)
 {
@@ -1024,6 +1104,9 @@ int	tcp_recv(struct i_socket *isk, char *ubuf, int len, int nonblock, unsigned f
         return -EAGAIN;
 
     wait_event(&isk->wq, isk->recv_data_len);
+
+    if (isk->errno)
+        return isk->errno;
 
     disable_irq();
 
