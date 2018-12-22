@@ -6,6 +6,7 @@
 #include "eth.h"
 #include "wait.h"
 #include "timer.h"
+#include "tcp.h"
 
 /* Structure describing an Internet (IP) socket address. */
 #define __SOCK_SIZE__	16		/* sizeof(struct sockaddr)	*/
@@ -50,7 +51,9 @@ struct i_socket
 	unsigned short        	mtu;
     unsigned int            rto;
     unsigned int            rtt;
-	unsigned short 		  	window;
+	volatile unsigned short window;
+    unsigned int            window_shift;
+    struct sliding_window   send_window;
 	volatile unsigned int 	flags;
 	volatile unsigned int 	status;
     unsigned int            local_ip;
@@ -66,13 +69,10 @@ struct i_socket
     unsigned char           ack_backlog;
     struct list_head        ack_queue;
    
-    unsigned int            received_ack;
-    unsigned int            ack_seq;
-    unsigned int            send_seq;
+    volatile unsigned int   received_ack;
+    volatile unsigned int   ack_seq;
+    volatile unsigned int   send_seq;
 
-    struct list_head        unsend;
-    struct list_head        unacked;
-	
     struct list_head        list;
 };
 

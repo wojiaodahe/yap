@@ -46,9 +46,15 @@ static struct timer_list arp_send_q_timer =
 int add_arp_table(unsigned char *mac, unsigned int ip, struct net_device *ndev)
 {
 	int i;
+    struct arp_table *arpt;
+    
 
 	if (!mac || !ip)
 		return -EINVAL;
+    
+    arpt = search_arp_table(ip);
+    if (arpt)
+        return 0;
 
 	for (i = 0; i < MAX_ARP_TABLE_NUM; i++)
 	{
@@ -106,7 +112,7 @@ void arp_send_q(void)
             list_del(&skb->list);
             eth = (struct ethhdr *)skb->data_buf;
             memcpy(eth->h_dest, arpt->mac, 6);
-            arpt->ndev->hard_start_xmit(skb, arpt->ndev);
+            netif_tx_queue(arpt->ndev, skb);
             continue;
         }
 
@@ -114,10 +120,7 @@ void arp_send_q(void)
         	skb->timeout--;
 
 		if (!skb->timeout)
-		{
-			list_del(&skb->list);
 			free_skbuff(skb);
-		}
     }
 }
 
@@ -163,7 +166,8 @@ int arp_send_request(unsigned int ip, struct net_device *ndev)
 	memcpy(arph->dmac, mac, 6);
 
 	skb->data_len	= 42;
-	return ndev->hard_start_xmit(skb, ndev);
+    
+    return netif_tx_queue(ndev, skb);
 }
 
 int arp_process(struct sk_buff *skb)
@@ -194,7 +198,7 @@ int arp_process(struct sk_buff *skb)
             arp->daddr = arp->saddr;
             arp->saddr = htonl(skb->ndev->ip);
             skb->data_len= 42;
-            skb->ndev->hard_start_xmit(skb, skb->ndev);
+            netif_tx_queue(skb->ndev, skb);
 		}
         else
             free_skbuff(skb);

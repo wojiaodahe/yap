@@ -48,11 +48,10 @@ int test_socket(void *p)
     seraddr.sin_family = AF_INET;
 	seraddr.sin_port = htons(8000);
 	seraddr.sin_addr.addr = htonl(0xc0a80168);
-
+    test_tcp();
 
     strcpy(buff, "helloworld");
     fd = sys_socket(AF_INET, SOCK_DGRAM, 0);
-    test_tcp();
 	while (1)
 	{
       //  ret = sys_sendto(fd, buff, 20, 0, (struct sockaddr *)&seraddr, sizeof(seraddr));
@@ -70,12 +69,14 @@ int test_socket(void *p)
 	}
 }
 
+#define BUFF_SIZE   8192
 int test_tcp(void *p)
 {
     int i;
     int ret = 0;
     int fd, new_fd;
-    char buff[16];
+    unsigned int *ptr;
+    char *buff;
     struct sockaddr_in seraddr;
     struct sockaddr_in cliaddr;
     int addrlen;
@@ -95,12 +96,70 @@ int test_tcp(void *p)
         printk("sys_listen faild\n");
 
     new_fd = sys_accept(fd, &cliaddr, &addrlen);
-    new_fd = sys_accept(fd, &cliaddr, &addrlen);
+    
+    buff = kmalloc(BUFF_SIZE);
+    if (!buff)
+    {
+        printk("kmalloc failed\n");
+        while (1)
+            ssleep(100);
+    }
 
+#if 0
+    while (1)
+    {
+        strcpy(buff, "hello world && hello tcp");
+        ret = sys_send(new_fd, buff, strlen(buff), 0);
+        printk("sys_send: %d\n", ret);
+
+        memset(buff, 0, 32);
+        ret = sys_recv(new_fd, buff, 32, 0);
+        printk("sys_recv: %d\n", ret);
+        for (i = 0; i < ret; i++)
+            printk("%c", buff[i]);
+    }
+#else
+    while (1)
+    {
+        memset(buff, 0, BUFF_SIZE);
+        ret = sys_recv(new_fd, buff, BUFF_SIZE, 0);
+        printk("sys_recv: %d\n", ret);
+# if 0
+        ptr = (unsigned int *)buff;
+        for (i = 0; i < ret / 4; i++)
+            printk("%d \n", *ptr++);
+#endif
+    }
+#endif
 	while (1)
 	{
         ssleep(100);
 	}
+}
+
+void test_connect(void)
+{
+    int ret;
+	int sockfd;
+	struct sockaddr_in seraddr,
+					   cltaddr;
+	
+	if ((sockfd = sys_socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        printk("sys_socket failed ret: %d\n");
+	
+	
+	seraddr.sin_family = AF_INET;
+	seraddr.sin_port = htons(8000);
+	seraddr.sin_addr.addr = htonl(0xc0a80168);
+	ret = sys_connect(sockfd, (struct sockaddr *)&seraddr, sizeof(seraddr));
+    if (ret < 0)
+        printk("sys_conect failed ret: %d\n");
+
+    sys_send(sockfd, "hello", 5, 0);
+    while (1)
+    {
+        ssleep(1);
+    }
 }
 
 int  test_open_led0(void *p)
@@ -217,6 +276,12 @@ int test_user_syscall_printf(void *argc)
 		ssleep(1);
 	}
 }
+
+int test_exit(void *arg)
+{
+    printk("thread exit!\n");
+}
+
 extern int s3c24xx_init_tty(void);
 extern void init_user_program_space(void);
 extern int test_platform(void);

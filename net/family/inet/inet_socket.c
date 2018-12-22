@@ -20,10 +20,11 @@ struct i_socket *alloc_isocket()
 	INIT_LIST_HEAD(&isk->wq.task_list);
 	INIT_LIST_HEAD(&isk->recv_data_head);
 	INIT_LIST_HEAD(&isk->send_data_head);
-	INIT_LIST_HEAD(&isk->unsend);
-	INIT_LIST_HEAD(&isk->unacked);
 	INIT_LIST_HEAD(&isk->list);
 	INIT_LIST_HEAD(&isk->ack_queue);
+	INIT_LIST_HEAD(&isk->send_window.wait);
+	INIT_LIST_HEAD(&isk->send_window.ready);
+	INIT_LIST_HEAD(&isk->send_window.wait_ack);
 
 	return isk;
 }
@@ -36,7 +37,7 @@ void free_isock(struct i_socket *isk)
         free_all_skb(&isk->recv_data_head);
 
     if (!list_empty(&isk->send_data_head))
-        free_all_skb(&isk->recv_data_head);
+        free_all_skb(&isk->send_data_head);
 
     if (!list_empty(&isk->ack_queue))
         free_all_skb(&isk->ack_queue);
@@ -48,14 +49,6 @@ void free_isock(struct i_socket *isk)
      *     wake_up(all wait task);
      *
      * */
-
-#if 0
-    if (!list_empty(&isk->unsend))
-        free skb or free tcp_seg 
-
-    if (!list_empty(&isk->unacked))
-        free skb or free tcp_seg
-#endif
 
     memset(isk, 0, sizeof (struct i_socket));
     kfree(isk);
@@ -102,6 +95,15 @@ static int inet_socket(struct socket *sock, int protocol)
 
 int inet_close(struct socket *sock, struct socket *peer)
 {
+	struct i_socket *isk;
+
+	if (!sock || !sock->data)
+		return -EBADF;
+
+	isk = (struct i_socket *)sock->data;
+
+	isk->i_prot_opt->close(isk, 0);
+
     return 0;
 }
 

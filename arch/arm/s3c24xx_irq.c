@@ -155,12 +155,19 @@ void s3c24xx_init_irq(void)
             desc->unmask    = s3c24xx_irqext_unmask;
             desc->set_flag  = s3c24xx_irqext_set_flag;
         }
+        /*
+         * else if (irq has sub_irq)
+         * {
+         * xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+         * }
+         * */
         else
         {
             desc->mask      = s3c24xx_irq_mask;
             desc->unmask    = s3c24xx_irq_unmask;
             desc->set_flag  = s3c24xx_irq_set_flag;
         }
+
         if (register_irq_desc(desc) < 0)
         {
             printk("register_irq_desc failed! \n");

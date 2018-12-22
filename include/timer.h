@@ -1,5 +1,6 @@
 #ifndef INCLUDE_TIMER_H_
 #define INCLUDE_TIMER_H_
+#include "list.h"
 
 struct timer_list
 {

@@ -66,7 +66,7 @@ int netif_tx_queue(struct net_device *ndev, struct sk_buff *skb)
     if (test_bit(__QUEUE_STATE_XOFF, ndev->state))
         list_add_tail(&skb->list, &ndev->tx_queue);
     else
-        ndev->hard_start_xmit(skb, ndev);
+        return ndev->hard_start_xmit(skb, ndev);
 
     return 0;
 }

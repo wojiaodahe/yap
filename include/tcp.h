@@ -1,5 +1,6 @@
 #ifndef _TCP_H__
 #define _TCP_H__
+#include "list.h"
 
 #define TCY_SYN_RETRIES		5
 
@@ -29,20 +30,24 @@ enum
 
 struct sliding_window
 {
-    unsigned int tot_size;
-    unsigned int tot_data_len;
-    struct list_head will_be_sent;
-    struct list_head waiting_ack;
+    volatile unsigned int tot_size;
+    volatile unsigned int used_size;
+
+    struct list_head wait;
+    struct list_head ready;
+    struct list_head wait_ack;
 };
 
 struct tcp_seg
 {
 	void *data;
+    unsigned int send_seq;
     unsigned short len;
-	unsigned short retry_times;
+	unsigned short retries;
 	
     unsigned int expected_ack;
 
+    struct i_socket *isk;
 	struct list_head list;
 };
 
@@ -119,6 +124,12 @@ struct tcphdr
 /* timeout  */
 /* 对方法了syn 但在这个时间之内没有再发ack过来,则取消此次连接 */
 #define SYN_RCVD_HOLDING_TIME   1000  
+#define TCP_FIN_WAIT_TIME       500
+
+#define TCP_RETRY_TIMES         10
+#define TCP_SEG_SEND_RETRIES    10
+
+#define TCP_SEG_TIMEOUT_FLAG    (1 << 0)
 
 extern int tcp_process(struct sk_buff *skb);
 #endif

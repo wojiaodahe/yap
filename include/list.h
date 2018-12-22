@@ -40,6 +40,9 @@ static  void __list_del(struct list_head * prev, struct list_head * next)
 static void list_del(struct list_head * entry)
 {
 	__list_del(entry->prev,entry->next);
+
+    entry->next = entry;
+    entry->prev = entry;
 }
 
 

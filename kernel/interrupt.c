@@ -86,6 +86,9 @@ void free_irq(int irq_num)
     if (!desc)
         return;
 
+    
+    desc->mask(irq_num);
+    
     desc->irq_handler = NULL;
     desc->flag = 0;
     desc->count = 0;

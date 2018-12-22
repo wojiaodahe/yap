@@ -221,6 +221,13 @@ void dm9000_tx_done(struct net_device *ndev)
         
         netif_wake_queue(ndev);
     }
+    else
+    {
+        tx_status = dm9000_reg_read(DM9000_TSR1);
+        printk("tx_status tsr1: %x\n", tx_status);
+        tx_status = dm9000_reg_read(DM9000_TSR2);
+        printk("tx_status tsr2: %x\n", tx_status);
+    }
 }
 
 int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev)
@@ -233,7 +240,11 @@ int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev)
 	len = skb->data_len;							//把发送长度写入
 
     if (tx_pkt_cnt > 1)
+    {
+	    tmp = dm9000_reg_read(DM9000_IMR);		//先禁止网卡中断，防止在发送数据时被中断干扰	
+        printk("imr: %x\n", tmp);
         return NETDEV_TX_BUSY;
+    }
 
     tx_pkt_cnt++;
 	dm9000_reg_write(DM9000_IMR,0x80);		//先禁止网卡中断，防止在发送数据时被中断干扰	

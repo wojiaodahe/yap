@@ -95,6 +95,7 @@ struct net_device *ip_route(struct ip_addr *dest)
 
 int ip_do_send(struct sk_buff *skb, struct ip_addr *dest, unsigned char proto, struct net_device *ndev)
 {
+    int ret;
 	struct ethhdr    *eth;
 	struct arp_table *arpt = NULL;
 
@@ -104,7 +105,9 @@ int ip_do_send(struct sk_buff *skb, struct ip_addr *dest, unsigned char proto, s
 	arpt = search_arp_table(dest->addr);
 	if (!arpt)
 	{
-		arp_send_request(dest->addr, ndev);
+		ret = arp_send_request(dest->addr, ndev);
+        if (ret < 0)
+            return ret;
 		add_skb_to_arp_send_q(skb);
 		return 0;
 	}
@@ -114,11 +117,7 @@ int ip_do_send(struct sk_buff *skb, struct ip_addr *dest, unsigned char proto, s
 	memcpy(eth->h_source, skb->ndev->macaddr, 6);
 	eth->h_proto = htons(ETH_P_IP);
 
-//	skb->ndev->hard_start_xmit(skb, skb->ndev);
-    
-    netif_tx_queue(skb->ndev, skb);
-
-	return 0;
+    return netif_tx_queue(skb->ndev, skb);
 }
 
 int ip_fragment_create()

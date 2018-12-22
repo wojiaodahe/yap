@@ -9,6 +9,16 @@ void sys_timer_init(void)
     timer_init();
 }
 
+void kernel_disable_irq()
+{
+
+}
+
+void kernel_enable_irq()
+{
+
+}
+
 void kernel_previous_init(void)
 {
     int ret;

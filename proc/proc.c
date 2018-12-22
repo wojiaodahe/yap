@@ -59,6 +59,14 @@ unsigned int get_cpsr(void)
 	return p;
 }
 
+void thread_exit(void)
+{
+    while (1)
+    {
+        ssleep(1);
+    }
+}
+
 int user_thread_create(int (*f)(void *), void *args, int pid)
 {
 	unsigned int sp;
@@ -122,7 +130,7 @@ int kernel_thread(int (*f)(void *), void *args, int pid)
 	pcb->pwd  		= current->pwd;
 	memcpy(pcb->filp, current->filp, sizeof (pcb->filp));
 	
-	DO_INIT_SP(pcb->sp, f, args, 0, 0x1f & get_cpsr(), 0);
+	DO_INIT_SP(pcb->sp, f, args, thread_exit, 0x1f & get_cpsr(), 0);
 
 	disable_schedule();
 	pcb_list_add(pcb_head, pcb);
@@ -302,6 +310,7 @@ extern int socket_init(void);
 extern int create_stdin_stdout_stderr_device(void);
 extern void bus_list_init(void);
 extern int platform_bus_init(void);
+extern int test_exit(void *arg);
 int OS_INIT_PROCESS(void *argv)
 {
 	int ret;
@@ -358,15 +367,16 @@ int OS_INIT_PROCESS(void *argv)
 	dm9000_module_init();
 
 	//create_pthread(test_get_ticks, (void *)1, 10);
-	kernel_thread(test_open_led0, (void *)2, 25);
-	kernel_thread(test_open_led1, (void *)2, 25);
-	kernel_thread(test_open_led2, (void *)2, 25);
+//	kernel_thread(test_open_led0, (void *)2, 25);
+//	kernel_thread(test_open_led1, (void *)2, 25);
+//	kernel_thread(test_open_led2, (void *)2, 25);
 	kernel_thread(test_open_led3, (void *)2, 25);
 //	kernel_thread(test_nand, (void *)2, 20);
 //	kernel_thread(test_user_syscall_open, (void *)2, 20);
-	kernel_thread(test_user_syscall_printf, (void *)2, 20);
+//	kernel_thread(test_user_syscall_printf, (void *)2, 20);
 //	kernel_thread(test_wait_queue, (void *)2, 20);
 	kernel_thread(test_socket, (void *)2, 20);
+//	kernel_thread(test_exit,   (void *)2, 20);
 
 
 
