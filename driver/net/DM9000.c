@@ -246,8 +246,9 @@ int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev)
         return NETDEV_TX_BUSY;
     }
 
+    kernel_disable_irq();
+    
     tx_pkt_cnt++;
-	dm9000_reg_write(DM9000_IMR,0x80);		//先禁止网卡中断，防止在发送数据时被中断干扰	
 	DM_ADD = DM9000_MWCMD;					//存储器读地址自动增加的读数据命令
 	for(i=0; i<len; i+=2)					//16 bit mode
 	{
@@ -265,7 +266,8 @@ int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev)
         queue_pkt_len = len;
         netif_stop_queue(ndev);
     }
-	dm9000_reg_write(DM9000_IMR,0x83);	
+    
+    kernel_enable_irq();
 
 	free_skbuff(skb);
 

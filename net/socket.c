@@ -45,7 +45,7 @@ struct sk_buff *alloc_skbuff(unsigned short len)
 {
 #if SKB_USE_SKB_POOL
 	int i;
-	print_unused_skb();
+//	print_unused_skb();
 	for (i = 0; i < MAX_SKB_NUM; i++)
 	{
 		if (SKB[i].use_flag == SKB_NO_USE)

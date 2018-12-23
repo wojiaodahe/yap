@@ -3,8 +3,36 @@
 #include "interrupt.h"
 #include "common.h"
 #include "kmalloc.h"
+#include "printk.h"
 
 static struct irq_desc *irq_desc_table[MAX_IRQ_NUMBER];
+unsigned int OSIntNesting = 0;
+
+/* 暂不支持中断嵌套, OSIntNesting == 1 表示当前程序处理中断当中, OSIntNesting = 0 表示未处理中断当中*/
+void kernel_disable_irq()
+{
+    if (OSIntNesting > 0) /* 内核不支持中断嵌套, OSIntNesting = 1的时候表示已经处于中断当中, 这时中断是关闭的 */
+        return;
+    disable_irq();
+}
+
+void kernel_enable_irq()
+{
+    if (OSIntNesting > 0) /*   */
+        return;
+    enable_irq();
+}
+
+void enter_critical()
+{
+
+}
+
+
+void exit_critical()
+{
+
+}
 
 void deliver_irq(int irq_num)
 {
@@ -17,28 +45,29 @@ void deliver_irq(int irq_num)
     
     if (desc && desc->irq_handler)
     {
+        OSIntNesting++;
+    
         desc->count++;
         desc->irq_handler(desc->priv);
+        
+        OSIntNesting--;
     }
 }
 
 int register_irq_desc(struct irq_desc *desc)
 {
-    int irq_num;
-
     if (!desc)
         return -EINVAL;
 
-    for (irq_num = 0; irq_num < MAX_IRQ_NUMBER; irq_num++)
-    {
-        if (irq_desc_table[irq_num] == NULL)
-        {
-            irq_desc_table[irq_num] = desc;
-            return 0;
-        }
-    }
+    if (desc->irq_num >= MAX_IRQ_NUMBER)
+        return -ENOMEM;
 
-    return -ENOMEM;
+    if (irq_desc_table[desc->irq_num])
+        return -EBUSY;
+
+    irq_desc_table[desc->irq_num] = desc;
+
+    return 0;
 }
 
 void unregister_irq_desc(unsigned int irq_num)

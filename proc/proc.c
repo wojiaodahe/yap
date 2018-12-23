@@ -23,8 +23,6 @@ extern void *alloc_stack(void);
 pcb_t *next_run;
 pcb_t *current;
 static pcb_t *pcb_head;
-unsigned int OSIntNesting = 0;
-
 
 #define DO_INIT_SP(sp,fn,args,lr,cpsr,pt_base)									\
 		do{																		\
@@ -245,11 +243,11 @@ void clr_task_status(unsigned int status)
 }
 
 static unsigned int OS_TICKS = 0;
+extern unsigned int OSIntNesting;
 void OS_Clock_Tick(void *arg)
 {
     pcb_t *tmp;
 
-    disable_irq();
     //
     OS_TICKS++;
     //
@@ -276,10 +274,11 @@ void OS_Clock_Tick(void *arg)
         return;
 
     current->ticks = current->time_slice;
-
+    
+    OSIntNesting--;
     OS_IntSched();
 
-    enable_irq();
+    /*OSIntNesting-- 不能放在这里，因为代码不会执行到这儿 */
 }
 
 unsigned int OS_Get_Kernel_Ticks(void)
