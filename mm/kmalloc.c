@@ -85,7 +85,7 @@ void init_page_buddy()
     }
 }
 
-void init_list_head(struct page *page)
+static void init_list_head(struct page *page)
 {
     if (!page)
         return;
@@ -93,7 +93,7 @@ void init_list_head(struct page *page)
     page->next = page;
 }
 
-void list_add_chain_tail(struct page *ch, struct page *ct, struct page *head)
+static void list_add_chain_tail(struct page *ch, struct page *ct, struct page *head)
 {
     ch->prev = head->prev;
     head->prev->next = ch;
@@ -101,7 +101,7 @@ void list_add_chain_tail(struct page *ch, struct page *ct, struct page *head)
     ct->next = head;
 }
 
-void list_add_chain(struct page *ch, struct page *ct,struct page *head)
+static void list_add_chain(struct page *ch, struct page *ct,struct page *head)
 {
     ch->prev=head;
     ct->next=head->next;
@@ -109,7 +109,7 @@ void list_add_chain(struct page *ch, struct page *ct,struct page *head)
     head->next=ch;
 }
 
-void __list_add(struct page *new_lst, struct page *prev, struct page *next)
+static void __list_add(struct page *new_lst, struct page *prev, struct page *next)
 {
     next->prev = new_lst;
     new_lst->next = next;
@@ -117,18 +117,18 @@ void __list_add(struct page *new_lst, struct page *prev, struct page *next)
     prev->next = new_lst;
 }
 
-void list_add_tail(struct page *new_lst, struct page *head)
+static void list_add_tail(struct page *new_lst, struct page *head)
 {
     __list_add(new_lst, head->prev, head);
 }
 
-void list_remove_chain(struct page *ch,struct page *ct)
+static void list_remove_chain(struct page *ch,struct page *ct)
 {
 	ch->prev->next=ct->next;
 	ct->next->prev=ch->prev;
 }
 
-int list_empty(struct page *head)
+static int list_empty(struct page *head)
 {
     return head->next == head;
 }
@@ -436,9 +436,14 @@ void kmem_cache_free(struct kmem_cache *cache, void *objp)
 void kfree(void *addr)
 {
     struct page *pg;
-
+    
+    check_addr(addr);
+    
     addr = (void *)((unsigned int)addr - 4);
     pg = virt_to_page((unsigned int)addr);
+
+    check_addr(addr);
+
     kmem_cache_free(pg->cache, addr);
 }
 
@@ -451,8 +456,12 @@ void *kmalloc(unsigned int size)
         return NULL;
 
     p = kmem_cache_alloc(&kmalloc_cache[index], index, 0);
+    
+    check_addr(p);
+   
     if (p)
-        memset(p, 0, size);
+    memset(p, 0, size);
+    
     return p;
 }
 

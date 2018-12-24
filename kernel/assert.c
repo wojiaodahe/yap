@@ -16,3 +16,28 @@ void assertion_failure(char *exp, char *file, char *base_file, int line)
 	//spin("assertion_failure()");
 
 }
+
+void check_addr(void *addr)
+{
+    if (!addr)
+    {
+        disable_irq();
+        while (1)
+            printk("Addr NULL! %s %d\n", __func__, __LINE__);
+    }
+    
+    if (!((unsigned int)addr & 0x30000000))
+    {
+        disable_irq();
+        while (1)
+            printk("Addr NULL! %s %d\n", __func__, __LINE__);
+    }
+
+    if ((unsigned int)addr & 0xc0000000)
+    {
+        disable_irq();
+        while (1)
+            printk("Addr NULL! %s %d\n", __func__, __LINE__);
+    }
+    
+}

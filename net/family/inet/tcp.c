@@ -15,6 +15,7 @@
 #include "kernel.h"
 #include "syslib.h"
 #include "kmalloc.h"
+#include "interrupt.h"
 
 
 static struct list_head active_queue;
@@ -411,7 +412,8 @@ int tcp_ack_handler(struct i_socket *isk, struct tcphdr *tcph)
     
     if (isk->received_ack < received_ack)
         isk->received_ack = received_ack;
-    
+  
+    kernel_disable_irq();
     isk->flags &= ~(TCP_SEG_TIMEOUT_FLAG);
     list = isk->send_window.wait_ack.next;
     while (list != &isk->send_window.wait_ack)
@@ -426,6 +428,8 @@ int tcp_ack_handler(struct i_socket *isk, struct tcphdr *tcph)
             free_tcp_seg(seg);
         }
     }
+    kernel_enable_irq();
+   
     return 0;
 }
 
@@ -542,7 +546,7 @@ int tcp_output(struct i_socket *isk, struct sk_buff *skb)
     return 0;
 }
 
-void tcp_send_ack(struct i_socket *isk, struct tcphdr *tcph, \
+int tcp_send_ack(struct i_socket *isk, struct tcphdr *tcph, \
                   unsigned int seq, unsigned int ack_seq, int syn, int fin, unsigned char now)
 {
     struct sk_buff *skb;
@@ -552,11 +556,11 @@ void tcp_send_ack(struct i_socket *isk, struct tcphdr *tcph, \
     struct ip_addr src;
 
     if (!isk || !tcph)
-        return;
+        return -ENOTSOCK;
 
     skb = alloc_skbuff(SIZEOF_ETHHDR + SIZEOF_IPHDR + MAX_TCP_HEADER_SIZE);
     if (!skb)
-        return;
+        return -ENOMEM;
     
     tcp_build_header(skb, isk, tcph->dest, tcph->source, seq, ack_seq, ACK_Y, syn, fin);
     if (syn)
@@ -573,20 +577,20 @@ void tcp_send_ack(struct i_socket *isk, struct tcphdr *tcph, \
     tcp->check      = inet_check(&src, &dest, (unsigned char *)tcp, tcp->doff * 4, INET_PROTO_TCP);
    
     if (now)
-        ip_send(skb, &dest, PROTO_TCP);
+        return ip_send(skb, &dest, PROTO_TCP);
     else
     {
         list_add_tail(&skb->list, &isk->ack_queue);
         isk->ack_backlog += 1;
     }
 
+    return 0;
 }
 
 int tcp_send_fin(struct i_socket *isk, unsigned int seq, unsigned int ack_seq)
 {
     return 0;
 }
-
 
 void tcp_set_options(struct i_socket *isk, struct sk_buff *skb)
 {
@@ -733,27 +737,32 @@ char *tcp_get_data_off(struct sk_buff *skb)
     return (skb->data_buf + SIZEOF_ETHHDR + SIZEOF_IPHDR + tcph->doff * 4);
 }
 
-#if 1
 /* 把收到的数据按顺序插入链表 */
-void tcp_seg_sort(struct i_socket *isk, struct sk_buff *skb)
+int tcp_seg_sort(struct i_socket *isk, struct sk_buff *skb)
 {
+    int ret = 0;
     unsigned int seq;
     unsigned int seq_tmp;
     struct sk_buff *skb_tmp;
     struct tcphdr *tcph;
-    unsigned int data_len;
     struct list_head *list;
-    unsigned int ack_seq; 
 
     if (!isk || !skb)
     {
         printk("%s %d \n", __func__, __LINE__);
+        return -ENOTSOCK;
     }
-
 
     tcph = get_tcph(skb);
     seq  = ntohl(tcph->seq);  /* 获取当前报文seq  */
+
+    if (seq < isk->ack_seq)
+    {
+        free_skbuff(skb);
+        return 0;
+    }
     
+    kernel_disable_irq();
     list = isk->recv_data_head.prev;
     while (list != &isk->recv_data_head)   /* 查找所有收到的tcp报文段 */
     {
@@ -768,13 +777,14 @@ void tcp_seg_sort(struct i_socket *isk, struct sk_buff *skb)
         else if (seq == seq_tmp) 
         {
             free_skbuff(skb);
-            return;
+            return 0;
         }
         else 
             list = list->prev;
     }
     list_add(&skb->list, list);
     isk->recv_data_len += tcp_get_data_lenght(skb);
+    kernel_enable_irq();
 
     /* 唤醒上层等待数据的进程  */
     if (isk->recv_data_len)
@@ -830,7 +840,7 @@ void tcp_seg_sort(struct i_socket *isk, struct sk_buff *skb)
      * 第5、6、7种情况需要回ack为1的包
      */
    
-    disable_irq();
+    kernel_disable_irq();
     list = list->next;  /*此时list指向新到的这个tcp报文,即skb */
     while (list != &isk->recv_data_head)
     {
@@ -840,35 +850,35 @@ void tcp_seg_sort(struct i_socket *isk, struct sk_buff *skb)
         /* 判断这个报文的seq是否是期待的seq  isk->ack_seq在三次握手之后被赋值*/
         if (isk->ack_seq != ntohl(tcph->seq)) 
         {
-            tcp_send_ack(isk, tcph, isk->send_seq, isk->ack_seq, SYN_N, FIN_N, ACK_NOW); /* 如果不是则回复期待的seq */
+            ret = tcp_send_ack(isk, tcph, isk->send_seq, isk->ack_seq, SYN_N, FIN_N, ACK_NOW); /* 如果不是则回复期待的seq */
             break;
         }  
         else
         {
             isk->ack_seq = tcp_get_ackseq(skb_tmp); /* 如果是则更新期待的seq并发送之  */
-            tcp_send_ack(isk, tcph, isk->send_seq, isk->ack_seq, SYN_N, FIN_N, ACK_NOMAL);
+            ret = tcp_send_ack(isk, tcph, isk->send_seq, isk->ack_seq, SYN_N, FIN_N, ACK_NOMAL);
+            if (ret < 0)
+                break;
         }
         list = list->next; /* 循环判断是否是上面注释当中的2、3种情况，如果是则发送所有可回复ack  */
     } 
-    enable_irq();
+    kernel_enable_irq();
 
     if (isk->ack_backlog >= isk->max_ack_backlog)
     {
-        while (!list_empty(&isk->ack_queue))
+        kernel_disable_irq();
+        while (!list_empty(&isk->ack_queue)) 
             tcp_timer_entry(isk);
+        
+        kernel_enable_irq();
     }
+
+    return ret;
 }
-#endif
 
 int tcp_data(struct i_socket *isk, struct tcphdr *tcph, struct sk_buff *skb)
 {
-    unsigned int seq;
-    struct iphdr *iph;
-    unsigned int tcp_data_len;
-    struct list_head *list;
-    
-    tcp_seg_sort(isk, skb);
-    return 0;
+    return tcp_seg_sort(isk, skb);
 }
 
 int tcp_fin_handler(struct i_socket *isk, struct tcphdr *tcph)
@@ -1234,7 +1244,7 @@ int	tcp_recv(struct i_socket *isk, char *ubuf, int len, int nonblock, unsigned f
      * 0地址开始读
      */
     
-    disable_irq();
+    kernel_disable_irq();
     src = ubuf;
     list = isk->recv_data_head.next;
     while (list != &isk->recv_data_head)
@@ -1261,8 +1271,7 @@ int	tcp_recv(struct i_socket *isk, char *ubuf, int len, int nonblock, unsigned f
             break;
         }
     }
-
-    enable_irq();
+    kernel_enable_irq();
 
     isk->recv_data_len -= (len - ubuf_len_remain);
 	return len - ubuf_len_remain;

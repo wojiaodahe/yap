@@ -32,6 +32,7 @@ void print_eth_head(struct sk_buff *skb)
 
 int eth_recv(struct sk_buff *skb)
 {
+    int ret = 0;
 	struct ethhdr *eth;
 
 	eth = (struct ethhdr *)skb->data_buf;
@@ -40,12 +41,14 @@ int eth_recv(struct sk_buff *skb)
 	{
 	case ETH_P_IP:
         updata_arp_table(skb);
-		return ip_recv(skb);
+		ret = ip_recv(skb);
+        break;
 	case ETH_P_ARP:
-		return arp_process(skb);
+		ret = arp_process(skb);
+        break;
 	default:
 		free_skbuff(skb);
 		break;
 	}
-	return 0;
+	return ret;
 }

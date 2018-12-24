@@ -47,8 +47,8 @@ struct irq_desc
 };
 
 extern int setup_irq_handler(unsigned int , irq_server, void *);
-extern void enable_irq(void);
-extern void disable_irq(void);
+extern void kernel_enable_irq(void);
+extern void kernel_disable_irq(void);
 
 #endif
 
