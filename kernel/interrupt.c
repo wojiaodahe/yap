@@ -5,6 +5,8 @@
 #include "kmalloc.h"
 #include "printk.h"
 
+extern unsigned char OS_RUNNING;
+
 static struct irq_desc *irq_desc_table[MAX_IRQ_NUMBER];
 unsigned int OSIntNesting = 0;
 static unsigned int cirtical_lock = 0;
@@ -51,6 +53,13 @@ void exit_critical()
 void deliver_irq(int irq_num)
 {
     struct irq_desc *desc;
+
+    if (!OS_RUNNING)
+    {
+        printk("Irq Occored Before OS_RUNNING\n");
+        panic();
+        return;
+    }
 
     if (irq_num >= MAX_IRQ_NUMBER)
         return;

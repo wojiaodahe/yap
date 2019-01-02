@@ -106,7 +106,7 @@ void netif_rx(struct sk_buff *skb)
 void netif_init(void)
 {
     INIT_LIST_HEAD(&netif_rx_queue);  
-	if (kernel_thread(netif_rx_thread, (void *)0, OS_NETIF_PROCESS_PID))
+	if (kernel_thread(netif_rx_thread, (void *)0))
     {
         printk("%s failed\n", __func__);
         panic();

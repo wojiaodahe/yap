@@ -138,9 +138,9 @@ static void int_issue(void *priv)
 int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev);
 struct net_device dm9000_dev =
 {
-	.ip 			 = 0xc0a80150,
+	.ip 			 = 0x01020302,
 	.netmask		 = 0xffffff00,
-	.gw  			 = 0xc0a80101,
+	.gw  			 = 0x01020301,
 	.mtu			 = 1514,
 	.hard_start_xmit = DM9000_sendPcket,
 };

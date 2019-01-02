@@ -21,7 +21,10 @@ extern void *alloc_stack(void);
 pcb_t *next_run;
 pcb_t *current;
 static pcb_t *pcb_head;
+static pcb_t sleep_proc_list_head;
 static unsigned int OS_TICKS = 0;
+static unsigned int pid = 0;
+unsigned char OS_RUNNING = 0;
 extern unsigned int OSIntNesting;
 
 #define DO_INIT_SP(sp,fn,args,lr,cpsr,pt_base)									\
@@ -100,7 +103,7 @@ int user_thread_create(int (*f)(void *), void *args, int pid)
 
 }
 
-int kernel_thread(int (*f)(void *), void *args, int pid)
+int kernel_thread(int (*f)(void *), void *args)
 {
 	unsigned int sp;
 	
@@ -121,7 +124,7 @@ int kernel_thread(int (*f)(void *), void *args, int pid)
 //	pcb->sp_bottom  = sp;
 	pcb->sp_size 	= TASK_STACK_SIZE;
 
-	pcb->pid 		= pid;
+	pcb->pid 		= pid++;
 	pcb->time_slice = 5;
 	pcb->ticks 		= 5;
 	pcb->root 		= current->root;
@@ -137,25 +140,37 @@ int kernel_thread(int (*f)(void *), void *args, int pid)
 	return 0;
 }
 
+pcb_t *OS_GetNextReady(void)
+{
+    pcb_t *tmp;
+	
+    tmp = current->next;
+    
+	while (tmp->p_flags != 0 || tmp->pid == -1)
+        tmp = tmp->next;
+
+    return tmp;
+}
+
 void OS_IntSched()
 {
 	
-	current = current->next;
+	current = OS_GetNextReady();
     
-	while (current->p_flags != 0 || current->pid == -1)
-        current = current->next;
-
 	__int_schedule();
 }
 
 void OS_Sched()
 {
+
+    if (!OS_RUNNING)
+    {
+        printk("OS_Sched Before OS_RUNNING\n");
+        panic();
+    }
 	kernel_disable_irq();
     
-	next_run = current->next;
-    
-    while (next_run->p_flags != 0 || next_run->pid == -1)
-        next_run = next_run->next;
+    next_run = OS_GetNextReady();
 	
 	__soft_schedule();
     
@@ -196,12 +211,37 @@ int OS_IDLE_PROCESS(void *arg)
 	}
 }
 
+void print_sleep_list(void)
+{
+    pcb_t *tmp;
+
+    tmp = sleep_proc_list_head.next_sleep_proc;
+
+    while (tmp != &sleep_proc_list_head)
+    {
+        printk("pid: %d sleep_time: %d\n", tmp->pid, tmp->sleep_time);
+        tmp = tmp->next_sleep_proc;
+    }
+}
+
+void add_current_to_sleep_list(void)
+{
+   sleep_proc_list_head.next_sleep_proc->prev_sleep_proc = current;
+   
+   current->next_sleep_proc = sleep_proc_list_head.next_sleep_proc;
+   current->prev_sleep_proc = &sleep_proc_list_head;
+  
+   sleep_proc_list_head.next_sleep_proc = current;
+}
+
 void process_sleep(unsigned int sec)
 {
 	enter_critical();
 
 	current->p_flags |= PROCESS_SLEEP;
 	current->sleep_time = sec * HZ;
+
+    add_current_to_sleep_list();
 
 	exit_critical();
 	OS_Sched();
@@ -215,6 +255,8 @@ void process_msleep(unsigned int m)
 	current->sleep_time = m * HZ / 1000;
 	if (!current->sleep_time)
 		current->sleep_time = 1;
+    
+    add_current_to_sleep_list();
 
 	exit_critical();
 	OS_Sched();
@@ -238,28 +280,34 @@ void clr_task_status(unsigned int status)
 	exit_critical();
 }
 
-void OS_Clock_Tick(void *arg)
+void update_sleeping_proc(void)
 {
     pcb_t *tmp;
+	
+    tmp = sleep_proc_list_head.next_sleep_proc;
+	while (tmp != &sleep_proc_list_head)
+	{
+        if (tmp->sleep_time > 0)
+            tmp->sleep_time--;
+        if (tmp->sleep_time == 0)
+        {
+            tmp->p_flags &= ~(PROCESS_SLEEP);
+            tmp->next_sleep_proc->prev_sleep_proc = tmp->prev_sleep_proc; 
+            tmp->prev_sleep_proc->next_sleep_proc = tmp->next_sleep_proc;
+        }
+        tmp = tmp->next_sleep_proc;
+	}
 
+}
+
+void OS_Clock_Tick(void *arg)
+{
     //
     OS_TICKS++;
     //
 
     timer_list_process();
-
-	tmp = current->next;
-	while (tmp != current)
-	{
-		if (tmp->p_flags & PROCESS_SLEEP)
-		{
-			if (tmp->sleep_time > 0)
-				tmp->sleep_time--;
-			if (tmp->sleep_time == 0)
-				tmp->p_flags &= ~(PROCESS_SLEEP);
-		}
-		tmp = tmp->next;
-	}
+    update_sleeping_proc();
 
     if (current->ticks > 0)	
         current->ticks--;
@@ -311,8 +359,8 @@ int OS_INIT_PROCESS(void *argv)
 	int fd_stdout;
 	int fd_stderr;
 
+	enter_critical();
 	sys_timer_init();
-	kernel_disable_irq();
 
 	fd_stdout = sys_open("/dev/stdout", 0, 0);
 	if (fd_stdout < 0)
@@ -336,14 +384,14 @@ int OS_INIT_PROCESS(void *argv)
 	}
 
 #if 1
-	ret = kernel_thread(OS_SYS_PROCESS,  (void *)0, OS_SYS_PROCESS_PID);
+	ret = kernel_thread(OS_SYS_PROCESS,  (void *)0);
 	if (ret < 0)
 	{
 		printk("create OS_SYS_PROCESS error\n");
 		panic();
 	}
 
-	ret = kernel_thread(OS_IDLE_PROCESS, (void *)0, OS_IDLE_PROCESS_PID);
+	ret = kernel_thread(OS_IDLE_PROCESS, (void *)0);
 	if (ret < 0)
 	{
 		printk("create OS_IDLE_PROCESS error\n");
@@ -360,20 +408,20 @@ int OS_INIT_PROCESS(void *argv)
 	dm9000_module_init();
 
 	//create_pthread(test_get_ticks, (void *)1, 10);
-//	kernel_thread(test_open_led0, (void *)2, 25);
-//	kernel_thread(test_open_led1, (void *)2, 25);
-//	kernel_thread(test_open_led2, (void *)2, 25);
-	kernel_thread(test_open_led3, (void *)2, 25);
-//	kernel_thread(test_nand, (void *)2, 20);
-//	kernel_thread(test_user_syscall_open, (void *)2, 20);
-//	kernel_thread(test_user_syscall_printf, (void *)2, 20);
-//	kernel_thread(test_wait_queue, (void *)2, 20);
-	kernel_thread(test_socket, (void *)2, 20);
-//	kernel_thread(test_exit,   (void *)2, 20);
+	kernel_thread(test_open_led0, (void *)2);
+	kernel_thread(test_open_led1, (void *)2);
+	kernel_thread(test_open_led2, (void *)2);
+	kernel_thread(test_open_led3, (void *)2);
+//	kernel_thread(test_nand, (void *)2);
+//	kernel_thread(test_user_syscall_open, (void *)2);
+	kernel_thread(test_user_syscall_printf, (void *)2);
+//	kernel_thread(test_wait_queue, (void *)2);
+	kernel_thread(test_socket, (void *)2);
+//	kernel_thread(test_exit,   (void *)2);
+    
+    OS_RUNNING = 1;
+    exit_critical();
 
-
-
-	kernel_enable_irq();
 #endif
 	while (1)
 	{
@@ -387,6 +435,10 @@ int OS_Init(void)
 	int ret;
 	pcb_head = pcb_list_init();
 	current = pcb_head->next;
+
+    sleep_proc_list_head.pid = -1;
+    sleep_proc_list_head.next_sleep_proc = &sleep_proc_list_head;
+    sleep_proc_list_head.prev_sleep_proc = &sleep_proc_list_head;
 	
 	ret = system_mm_init();
 	if (ret < 0)
@@ -427,7 +479,7 @@ int OS_Init(void)
     	panic();
     }
 
-	ret = kernel_thread(OS_INIT_PROCESS, (void *)0, OS_INIT_PROCESS_PID);
+	ret = kernel_thread(OS_INIT_PROCESS, (void *)0);
 	if (ret < 0)
 	{
 		printk("create OS_INIT_PROCESS error\n");

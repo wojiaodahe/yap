@@ -69,6 +69,9 @@ typedef struct pcb
 	struct file 	*filp[NR_OPEN];
 	struct inode	*pwd;
 	struct inode 	*root;
+
+    struct pcb      *next_sleep_proc;
+    struct pcb      *prev_sleep_proc;
 }pcb_t;
 
 #endif 

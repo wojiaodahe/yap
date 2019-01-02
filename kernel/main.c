@@ -83,7 +83,7 @@ int test_tcp(void *p)
 	
     seraddr.sin_family = AF_INET;
 	seraddr.sin_port = htons(8000);
-	seraddr.sin_addr.addr = htonl(0xc0a80150);
+	seraddr.sin_addr.addr = htonl(0x01020302);
 
     fd = sys_socket(AF_INET, SOCK_STREAM, 0);
 
@@ -272,7 +272,7 @@ int test_user_syscall_printf(void *argc)
 {
 	while (1)
 	{
-		//myprintf("Process Test Printf %d %x %c %s", 10, 0xaa, 'p', "test string\n");
+		myprintf("Process Test Printf %d %x %c %s", 10, 0xaa, 'p', "test string\n");
 		ssleep(1);
 	}
 }
