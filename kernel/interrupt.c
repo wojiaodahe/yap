@@ -7,15 +7,14 @@
 
 static struct irq_desc *irq_desc_table[MAX_IRQ_NUMBER];
 unsigned int OSIntNesting = 0;
+static unsigned int cirtical_lock = 0;
 
 /* 暂不支持中断嵌套, OSIntNesting == 1 表示当前程序处理中断当中, OSIntNesting = 0 表示未处理中断当中*/
-static unsigned int irq_lock = 0;
 void kernel_disable_irq()
 {
     if (OSIntNesting > 0) /* 内核不支持中断嵌套, OSIntNesting = 1的时候表示已经处于中断当中, 这时中断是关闭的 */
         return;
     
-    irq_lock++;
     disable_irq();
 }
 
@@ -24,21 +23,29 @@ void kernel_enable_irq()
     if (OSIntNesting > 0) /*   */
         return;
 
-    irq_lock--;
-    if (irq_lock)
-        return;
     enable_irq();
 }
 
 void enter_critical()
 {
+    if (OSIntNesting > 0) /*   */
+        return;
 
+    cirtical_lock++;
+    disable_irq();
 }
 
 
 void exit_critical()
 {
+    if (OSIntNesting > 0) /*   */
+        return;
 
+    cirtical_lock--;
+    if (cirtical_lock)
+        return;
+
+    enable_irq();
 }
 
 void deliver_irq(int irq_num)

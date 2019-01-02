@@ -29,12 +29,12 @@ void del_timer(struct timer_list *timer)
 	if (!timer)
 		return;
 
-    //disable_irq();
+    enter_critical();
 
     list_del(&timer->list);
 	INIT_LIST_HEAD(&timer->list);
 
-    //enable_irq();
+    exit_critical();
 }
 
 int mod_timer(struct timer_list *timer, unsigned long expires)
@@ -46,7 +46,7 @@ int mod_timer(struct timer_list *timer, unsigned long expires)
 	if (!timer)
 		return -EINVAL;
 
-    //disable_irq();
+    enter_critical();
     list = timer_list_head.next;
     while (list != &timer_list_head)
 	{
@@ -60,7 +60,7 @@ int mod_timer(struct timer_list *timer, unsigned long expires)
 		}
 	}
 
-    //enable_irq();
+    exit_critical();
 	return ret;
 }
 

@@ -13,9 +13,7 @@
 
 extern void pcb_list_add(pcb_t *head, pcb_t *pcb);
 extern pcb_t * pcb_list_init(void);
-extern void remap_l1(unsigned int paddr, unsigned int vaddr, int size);
 extern void __soft_schedule(void);
-extern void timer_init(void);
 extern void __int_schedule(void);
 extern pcb_t *alloc_pcb(void);
 extern void *alloc_stack(void);
@@ -23,6 +21,8 @@ extern void *alloc_stack(void);
 pcb_t *next_run;
 pcb_t *current;
 static pcb_t *pcb_head;
+static unsigned int OS_TICKS = 0;
+extern unsigned int OSIntNesting;
 
 #define DO_INIT_SP(sp,fn,args,lr,cpsr,pt_base)									\
 		do{																		\
@@ -92,9 +92,9 @@ int user_thread_create(int (*f)(void *), void *args, int pid)
 	
 	DO_INIT_SP(pcb->sp, f, args, 0, 0x1f & get_cpsr(), 0);
 
-//	disable_schedule();
+//	enter_critical();
 	pcb_list_add(pcb_head, pcb);
-//	enable_schedule();
+//	exit_critical();
 
 	return 0;
 
@@ -130,16 +130,15 @@ int kernel_thread(int (*f)(void *), void *args, int pid)
 	
 	DO_INIT_SP(pcb->sp, f, args, thread_exit, 0x1f & get_cpsr(), 0);
 
-	disable_schedule();
+	enter_critical();
 	pcb_list_add(pcb_head, pcb);
-	enable_schedule();
+	exit_critical();
 
 	return 0;
 }
 
 void OS_IntSched()
 {
-	//disable_schedule();
 	
 	current = current->next;
     
@@ -147,14 +146,11 @@ void OS_IntSched()
         current = current->next;
 
 	__int_schedule();
-
-	//enable_schedule();
-
 }
 
 void OS_Sched()
 {
-	disable_schedule();
+	kernel_disable_irq();
     
 	next_run = current->next;
     
@@ -162,8 +158,8 @@ void OS_Sched()
         next_run = next_run->next;
 	
 	__soft_schedule();
-
-    enable_schedule();
+    
+    kernel_enable_irq();
 }
 
 int OS_SYS_PROCESS(void *p)
@@ -202,48 +198,46 @@ int OS_IDLE_PROCESS(void *arg)
 
 void process_sleep(unsigned int sec)
 {
-	disable_schedule();
+	enter_critical();
 
 	current->p_flags |= PROCESS_SLEEP;
 	current->sleep_time = sec * HZ;
 
-	enable_schedule();
+	exit_critical();
 	OS_Sched();
 }
 
 void process_msleep(unsigned int m)
 {
-	disable_schedule();
+	enter_critical();
 
 	current->p_flags |= PROCESS_SLEEP;
 	current->sleep_time = m * HZ / 1000;
 	if (!current->sleep_time)
 		current->sleep_time = 1;
 
-	enable_schedule();
+	exit_critical();
 	OS_Sched();
 }
 
 void set_task_status(unsigned int status)
 {
-	disable_schedule();
+	enter_critical();
 
 	current->p_flags |= status;
 
-	enable_schedule();
+	exit_critical();
 }
 
 void clr_task_status(unsigned int status)
 {
-	disable_schedule();
+	enter_critical();
 
 	current->p_flags &= ~(status);
 
-	enable_schedule();
+	exit_critical();
 }
 
-static unsigned int OS_TICKS = 0;
-extern unsigned int OSIntNesting;
 void OS_Clock_Tick(void *arg)
 {
     pcb_t *tmp;
@@ -318,7 +312,7 @@ int OS_INIT_PROCESS(void *argv)
 	int fd_stderr;
 
 	sys_timer_init();
-	disable_irq();
+	kernel_disable_irq();
 
 	fd_stdout = sys_open("/dev/stdout", 0, 0);
 	if (fd_stdout < 0)
@@ -379,7 +373,7 @@ int OS_INIT_PROCESS(void *argv)
 
 
 
-	enable_irq();
+	kernel_enable_irq();
 #endif
 	while (1)
 	{

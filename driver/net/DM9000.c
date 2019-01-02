@@ -246,7 +246,7 @@ int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev)
         return NETDEV_TX_BUSY;
     }
 
-    kernel_disable_irq();
+    enter_critical();
     
     tx_pkt_cnt++;
 	DM_ADD = DM9000_MWCMD;					//存储器读地址自动增加的读数据命令
@@ -267,7 +267,7 @@ int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev)
         netif_stop_queue(ndev);
     }
     
-    kernel_enable_irq();
+    exit_critical();
 
 	free_skbuff(skb);
 

@@ -1,2 +1,54 @@
-tcp连续读读大于8k字节的数据会导致发送失败
+日志记录了相对隐藏要插真眼才能搞定的bug,以备查阅
+
+1: 
+tcp连续读读大于8k字节的数据会导致发送ack(或其他数据)失败
 原因 dm9000.c里的tx_pkt_cnt 一直为2导致发送出的数据会被一直放在netif_tx_queue里面
+    
+    if (tx_pkt_cnt > 1)
+    {
+	    tmp = dm9000_reg_read(DM9000_IMR);		//先禁止网卡中断，防止在发送数据时被中断干扰	
+        printk("imr: %x\n", tmp);
+        return NETDEV_TX_BUSY;
+    }
+
+    tx_pkt_cnt++;
+	DM_ADD = DM9000_MWCMD;					//存储器读地址自动增加的读数据命令
+	for(i=0; i<len; i+=2)					//16 bit mode
+	{
+		udelay(2);
+		DM_CMD = datas[i] | (datas[i+1]<<8);
+	}
+    if (tx_pkt_cnt == 1)
+    {
+        dm9000_reg_write(DM9000_TXPLH, (len>>8) & 0x0ff);
+        dm9000_reg_write(DM9000_TXPLL, len & 0x0ff);
+	    dm9000_reg_write(DM9000_TCR, 0x01);		//发送数据到以太网上
+    }
+    else
+    {
+        queue_pkt_len = len;
+        netif_stop_queue(ndev);
+    }
+可能原因: tcp在处理接收数据的时候会检测ack的队列，如果大于的队列的最大值则会在处理函数里发出ack当程序
+执行到dm9000_send函数在拷贝数据或写寄存器的时候可能会被时钟中断信号打断,时钟节拍里会调用tcp_timer_entry函数
+这个函数会检查ack队列,如果有数据则发送,同样会执行到dm9000_send函数,这时拷贝数据或写寄存器可能就会破坏
+之前已经写入的数据
+解决方法：在dm9000_send拷贝数据或写寄存器的时候关闭中断,写完之后打开中断.问题没有再出现
+
+2：tcp在连续收大块数据时候会卡死 表现为 free_skb时skb->data_buf为空或非法值或list_del时list为空或非法值等
+    
+调试方法：添加check_addr 函数 在kfree kmalloc list_del等函数里检查地址合法性,如果不合法则打印错误并调用panic()
+卡住然后在keil里查看调用栈即可看到调用关系及参数传递时的值情况.
+
+可能原因：应该和问题1一样属于临界区问题 在中断、多线程中都有可能对struct i_socket的某个变量有操作的地方加上临界
+保护(暂时为关中断)之后tcp接收功能已经比较稳定，发送功能同理，稳定性暂时还未调试
+
+3：ubuntu下wireshark抓包显示 tcp会有多个 TCP Dup ACK 包
+
+可能原因：
+   1:ack发送的慢导致对方超时重传, tcp收到相同的数据包未丢弃而是同样回得了ack并插了接收队列里,然而发送的慢不
+是不发,这就导至最后发了多个同样的ack
+   2:确实丢包  tcp检查到丢包之后会连续发送期待的那个包同样是发送多个相同的ack
+
+    
+    

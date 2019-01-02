@@ -84,10 +84,12 @@ static int netif_rx_thread(void *arg)
         while (list != &netif_rx_queue)
         {
             skb = list_entry(list, struct sk_buff, list);
-            disable_irq();
+            
+            enter_critical();
             list = list->next;
             list_del(&skb->list);
-            enable_irq();
+            exit_critical();
+           
             eth_recv(skb);
         }
     }

@@ -173,7 +173,7 @@ int udp_recvfrom(struct i_socket *isk, char *ubuf, int len, int noblock,
 	wait_event(&isk->wq, !list_empty(&isk->recv_data_head));
 
 	buf = ubuf;
-	disable_irq();
+	enter_critical();
 	list_for_each(list, &isk->recv_data_head)
 	{
 		tmp = list_entry(list, struct sk_buff, list);
@@ -194,7 +194,7 @@ int udp_recvfrom(struct i_socket *isk, char *ubuf, int len, int noblock,
 
 	free_all_skb(&isk->recv_data_head);
     INIT_LIST_HEAD(&isk->recv_data_head);
-	enable_irq();
+	exit_critical();
 
 	return (len - len_remain);
 }

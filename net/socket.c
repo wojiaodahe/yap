@@ -50,16 +50,16 @@ struct sk_buff *alloc_skbuff(unsigned short len)
 	{
 		if (SKB[i].use_flag == SKB_NO_USE)
 		{
-            kernel_disable_irq();
+            enter_critical();
 			SKB[i].data_buf = kmalloc(len);
 			if (!SKB[i].data_buf)
             {
-                kernel_enable_irq();
+                exit_critical();
                 return NULL;
             }
 			INIT_LIST_HEAD(&SKB[i].list);
 			SKB[i].use_flag = SKB_USED;
-            kernel_enable_irq();
+            exit_critical();
 			return &SKB[i];
 		}
 	}

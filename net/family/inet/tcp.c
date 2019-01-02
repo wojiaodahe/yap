@@ -413,7 +413,7 @@ int tcp_ack_handler(struct i_socket *isk, struct tcphdr *tcph)
     if (isk->received_ack < received_ack)
         isk->received_ack = received_ack;
   
-    kernel_disable_irq();
+    enter_critical();
     isk->flags &= ~(TCP_SEG_TIMEOUT_FLAG);
     list = isk->send_window.wait_ack.next;
     while (list != &isk->send_window.wait_ack)
@@ -428,7 +428,7 @@ int tcp_ack_handler(struct i_socket *isk, struct tcphdr *tcph)
             free_tcp_seg(seg);
         }
     }
-    kernel_enable_irq();
+    exit_critical();
    
     return 0;
 }
@@ -762,7 +762,7 @@ int tcp_seg_sort(struct i_socket *isk, struct sk_buff *skb)
         return 0;
     }
     
-    kernel_disable_irq();
+    enter_critical();
     list = isk->recv_data_head.prev;
     while (list != &isk->recv_data_head)   /* 查找所有收到的tcp报文段 */
     {
@@ -784,7 +784,7 @@ int tcp_seg_sort(struct i_socket *isk, struct sk_buff *skb)
     }
     list_add(&skb->list, list);
     isk->recv_data_len += tcp_get_data_lenght(skb);
-    kernel_enable_irq();
+    exit_critical();
 
     /* 唤醒上层等待数据的进程  */
     if (isk->recv_data_len)
@@ -840,7 +840,7 @@ int tcp_seg_sort(struct i_socket *isk, struct sk_buff *skb)
      * 第5、6、7种情况需要回ack为1的包
      */
    
-    kernel_disable_irq();
+    enter_critical();
     list = list->next;  /*此时list指向新到的这个tcp报文,即skb */
     while (list != &isk->recv_data_head)
     {
@@ -862,15 +862,15 @@ int tcp_seg_sort(struct i_socket *isk, struct sk_buff *skb)
         }
         list = list->next; /* 循环判断是否是上面注释当中的2、3种情况，如果是则发送所有可回复ack  */
     } 
-    kernel_enable_irq();
+    exit_critical();
 
     if (isk->ack_backlog >= isk->max_ack_backlog)
     {
-        kernel_disable_irq();
+        enter_critical();
         while (!list_empty(&isk->ack_queue)) 
             tcp_timer_entry(isk);
         
-        kernel_enable_irq();
+        exit_critical();
     }
 
     return ret;
@@ -1244,7 +1244,7 @@ int	tcp_recv(struct i_socket *isk, char *ubuf, int len, int nonblock, unsigned f
      * 0地址开始读
      */
     
-    kernel_disable_irq();
+    enter_critical();
     src = ubuf;
     list = isk->recv_data_head.next;
     while (list != &isk->recv_data_head)
@@ -1271,7 +1271,7 @@ int	tcp_recv(struct i_socket *isk, char *ubuf, int len, int nonblock, unsigned f
             break;
         }
     }
-    kernel_enable_irq();
+    exit_critical();
 
     isk->recv_data_len -= (len - ubuf_len_remain);
 	return len - ubuf_len_remain;

@@ -5,8 +5,8 @@
 #include "config.h"
 #include "wait.h"
 
-#define disable_schedule(x)	disable_irq()
-#define enable_schedule(x)	enable_irq()
+#define disable_schedule(x)	enter_critical()
+#define enable_schedule(x)	exit_critical()
 
 extern void *kmalloc(unsigned int size);
 
