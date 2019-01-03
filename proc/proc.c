@@ -405,12 +405,15 @@ int OS_INIT_PROCESS(void *argv)
 	}
 
 #if 1
+
+#if 0
 	ret = kernel_thread(OS_SYS_PROCESS,  (void *)0);
 	if (ret < 0)
 	{
 		printk("create OS_SYS_PROCESS error\n");
 		panic();
 	}
+#endif
 
 	ret = kernel_thread_prio(OS_IDLE_PROCESS, (void *)0, PROCESS_PRIO_IDLE);
 	if (ret < 0)
@@ -438,30 +441,7 @@ int OS_INIT_PROCESS(void *argv)
 	kernel_thread_prio(test_user_syscall_printf, (void *)2, PROCESS_PRIO_HIGH);
 //	kernel_thread(test_wait_queue, (void *)2);
 	kernel_thread(test_socket, (void *)2);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
-	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+//	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
     
     OS_RUNNING = 1;
     exit_critical();

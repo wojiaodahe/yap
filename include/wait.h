@@ -28,11 +28,28 @@ do {\
 	}								\
 }while (0)
 
-#define wait_event_interruptible(wq, condition)
+#define __wait_event_interruptible(wq, condition)\
+do {\
+	while (1)\
+	{							\
+        prepare_to_wait(wq, PROCESS_WAIT_INTERRUPTIBLE);\
+		if ((condition))						\
+		{\
+			break;						\
+		}\
+		OS_Sched();						\
+	}								\
+    finish_wait(wq);\
+}while (0)
+
+#define wait_event_interruptible(wq, condition)\
+    if (!(condition))\
+        __wait_event_interruptible(wq, condition);
+
 #define wait_event_timeout(wq, condition)
 
 #define wake_up(wq) __wake_up(wq)
-#define wake_up_interrupt(wq)
+#define wake_up_interruptible(wq) __wake_up_interruptible(wq)
 #define wake_up_timeout(wq)
 extern void __wake_up(wait_queue_t *wq);
 #endif /* INCLUDE_WAIT_H_ */

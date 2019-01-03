@@ -78,7 +78,7 @@ static int netif_rx_thread(void *arg)
     
     while (1)
     {
-        wait_event(&rx_wq, (!list_empty(&netif_rx_queue)));
+        wait_event_interruptible(&rx_wq, (!list_empty(&netif_rx_queue)));
         
         list = netif_rx_queue.next;
         while (list != &netif_rx_queue)
@@ -100,13 +100,13 @@ void netif_rx(struct sk_buff *skb)
     check_addr(skb);
     check_addr(skb->data_buf);
     list_add_tail(&skb->list, &netif_rx_queue);
-    wake_up(&rx_wq);
+    wake_up_interruptible(&rx_wq);
 }
 
 void netif_init(void)
 {
     INIT_LIST_HEAD(&netif_rx_queue);  
-	if (kernel_thread(netif_rx_thread, (void *)0))
+	if (kernel_thread_prio(netif_rx_thread, (void *)0, PROCESS_PRIO_HIGH))
     {
         printk("%s failed\n", __func__);
         panic();
