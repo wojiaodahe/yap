@@ -20,7 +20,7 @@ extern void *alloc_stack(void);
 
 pcb_t *next_run;
 pcb_t *current;
-static pcb_t *pcb_head;
+static struct proc_list_head proc_list[PROCESS_PRIO_BUTT];
 static pcb_t sleep_proc_list_head;
 static unsigned int OS_TICKS = 0;
 static unsigned int pid = 0;
@@ -68,41 +68,6 @@ void thread_exit(void)
     }
 }
 
-int user_thread_create(int (*f)(void *), void *args, int pid)
-{
-	unsigned int sp;
-	
-	pcb_t *pcb = (pcb_t *)alloc_pcb();
-
-	if((sp = (unsigned int)get_process_sp()) == 0)
-	{
-		printk("create_pthread get sp_space error\r\n");
-		return -1;
-	}
-
-	printk("get_pcb_addr: %x\r\n", (unsigned int)pcb);
-
-	sp 				= (sp + TASK_STACK_SIZE);
-	pcb->sp 		= sp;
-//	pcb->sp_bottom  = sp;
-	pcb->sp_size 	= TASK_STACK_SIZE;
-
-	pcb->pid 		= pid;
-	pcb->time_slice = 5;
-	pcb->ticks 		= 5;
-	pcb->root 		= current->root;
-	pcb->pwd  		= current->pwd;
-	
-	DO_INIT_SP(pcb->sp, f, args, 0, 0x1f & get_cpsr(), 0);
-
-//	enter_critical();
-	pcb_list_add(pcb_head, pcb);
-//	exit_critical();
-
-	return 0;
-
-}
-
 int kernel_thread(int (*f)(void *), void *args)
 {
 	unsigned int sp;
@@ -124,6 +89,7 @@ int kernel_thread(int (*f)(void *), void *args)
 //	pcb->sp_bottom  = sp;
 	pcb->sp_size 	= TASK_STACK_SIZE;
 
+    pcb->prio       = PROCESS_PRIO_NORMAL;
 	pcb->pid 		= pid++;
 	pcb->time_slice = 5;
 	pcb->ticks 		= 5;
@@ -134,7 +100,45 @@ int kernel_thread(int (*f)(void *), void *args)
 	DO_INIT_SP(pcb->sp, f, args, thread_exit, 0x1f & get_cpsr(), 0);
 
 	enter_critical();
-	pcb_list_add(pcb_head, pcb);
+	pcb_list_add(&proc_list[pcb->prio].head, pcb);
+	exit_critical();
+
+	return 0;
+}
+
+int kernel_thread_prio(int (*f)(void *), void *args, unsigned int prio)
+{
+	unsigned int sp;
+	
+	pcb_t *pcb = (pcb_t *)alloc_pcb();
+	if (!pcb)
+		return -ENOMEM;
+
+	if((sp = (unsigned int)get_process_sp()) == 0)
+	{
+		printk("kernel_thread get sp_space error\r\n");
+		return -ENOMEM;
+	}
+
+	printk("get_pcb_addr: %x\r\n", (unsigned int)pcb);
+
+	sp 				= (sp + TASK_STACK_SIZE);
+	pcb->sp 		= sp;
+//	pcb->sp_bottom  = sp;
+	pcb->sp_size 	= TASK_STACK_SIZE;
+
+    pcb->prio       = prio;
+	pcb->pid 		= pid++;
+	pcb->time_slice = 5;
+	pcb->ticks 		= 5;
+	pcb->root 		= current->root;
+	pcb->pwd  		= current->pwd;
+	memcpy(pcb->filp, current->filp, sizeof (pcb->filp));
+	
+	DO_INIT_SP(pcb->sp, f, args, thread_exit, 0x1f & get_cpsr(), 0);
+
+	enter_critical();
+	pcb_list_add(&proc_list[prio].head, pcb);
 	exit_critical();
 
 	return 0;
@@ -142,12 +146,29 @@ int kernel_thread(int (*f)(void *), void *args)
 
 pcb_t *OS_GetNextReady(void)
 {
+    int prio;
     pcb_t *tmp;
-	
-    tmp = current->next;
     
-	while (tmp->p_flags != 0 || tmp->pid == -1)
-        tmp = tmp->next;
+    for (prio = 0; prio < PROCESS_PRIO_BUTT; prio++)
+    {
+        tmp = proc_list[prio].current;
+        
+        do
+        {
+            tmp = tmp->next;
+            if (tmp->pid == -1)
+                continue;
+            if (tmp->p_flags == PROCESS_READY)
+            {
+                proc_list[prio].current = tmp;
+                return tmp;
+            }
+        } while (tmp != proc_list[prio].current);
+    }
+
+    enter_critical();
+    printk("No Ready Process!! \n");
+    panic();
 
     return tmp;
 }
@@ -206,7 +227,7 @@ int OS_IDLE_PROCESS(void *arg)
 {
 	while (1)
 	{
-		//printk("OS Idle Process\r\n");
+		printk("OS Idle Process\r\n");
 		OS_Sched();
 	}
 }
@@ -391,7 +412,7 @@ int OS_INIT_PROCESS(void *argv)
 		panic();
 	}
 
-	ret = kernel_thread(OS_IDLE_PROCESS, (void *)0);
+	ret = kernel_thread_prio(OS_IDLE_PROCESS, (void *)0, PROCESS_PRIO_IDLE);
 	if (ret < 0)
 	{
 		printk("create OS_IDLE_PROCESS error\n");
@@ -414,10 +435,33 @@ int OS_INIT_PROCESS(void *argv)
 	kernel_thread(test_open_led3, (void *)2);
 //	kernel_thread(test_nand, (void *)2);
 //	kernel_thread(test_user_syscall_open, (void *)2);
-	kernel_thread(test_user_syscall_printf, (void *)2);
+	kernel_thread_prio(test_user_syscall_printf, (void *)2, PROCESS_PRIO_HIGH);
 //	kernel_thread(test_wait_queue, (void *)2);
 	kernel_thread(test_socket, (void *)2);
-//	kernel_thread(test_exit,   (void *)2);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
+	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
     
     OS_RUNNING = 1;
     exit_critical();
@@ -432,13 +476,22 @@ int OS_INIT_PROCESS(void *argv)
 
 int OS_Init(void)
 {
+    int prio;
 	int ret;
-	pcb_head = pcb_list_init();
-	current = pcb_head->next;
+
+	current = &proc_list[PROCESS_PRIO_NORMAL].head;
 
     sleep_proc_list_head.pid = -1;
     sleep_proc_list_head.next_sleep_proc = &sleep_proc_list_head;
     sleep_proc_list_head.prev_sleep_proc = &sleep_proc_list_head;
+
+    for (prio = 0; prio < PROCESS_PRIO_BUTT; prio++)
+    {
+        proc_list[prio].head.pid = -1;
+        proc_list[prio].head.next = &proc_list[prio].head;
+        proc_list[prio].head.prev = &proc_list[prio].head;
+        proc_list[prio].current = &proc_list[prio].head;
+    }
 	
 	ret = system_mm_init();
 	if (ret < 0)
@@ -486,7 +539,7 @@ int OS_Init(void)
 		panic();
 	}
 	
-	current = pcb_head->next;
+	current = proc_list[PROCESS_PRIO_NORMAL].head.next;
 
 	timer_list_init();
     
@@ -500,14 +553,12 @@ int proc2pid(pcb_t *proc)
 
 pcb_t *pid2proc(int pid)
 {
-    pcb_t *tmp = pcb_head->next;
 
-    while (tmp->pid != -1)
-    {
-        if (tmp->pid == pid)
-            return tmp;
-        tmp = tmp->next;
-    }
+    enter_critical();
+    
+    printk("Uncomplete Function %s\n", __func__);
+   
+    panic();
 
     return 0;
 }

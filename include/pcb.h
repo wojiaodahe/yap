@@ -74,5 +74,13 @@ typedef struct pcb
     struct pcb      *prev_sleep_proc;
 }pcb_t;
 
+struct proc_list_head
+{
+    pcb_t head;
+    pcb_t *current;
+    unsigned int prio;
+    unsigned int proc_cnt;
+};
+
 #endif 
 

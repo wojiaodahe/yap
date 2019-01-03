@@ -280,6 +280,8 @@ int test_user_syscall_printf(void *argc)
 int test_exit(void *arg)
 {
     printk("thread exit!\n");
+    while (1)
+        ;
 }
 
 extern int s3c24xx_init_tty(void);
