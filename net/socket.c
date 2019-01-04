@@ -14,7 +14,7 @@ extern struct inode *get_empty_inode(void);
 
 
 
-#define SO_ACCEPTCON	(1<<16)		/* performed a listen		*/
+#define SO_ACCEPTCON	(1<<16)
 
 extern struct pcb *current;
 
@@ -120,10 +120,10 @@ struct socket * socki_lookup(struct inode *inode)
 	for (sock = sockets; sock <= last_socket; ++sock)
 	{
 		if (sock->state != SS_FREE && SOCK_INODE(sock) == inode) 
-			return(sock);
+			return sock;
 	}
 	
-	return(NULL);
+	return NULL;
 }
 
 static struct socket * sockfd_lookup(int fd, struct file **pfile)
@@ -131,7 +131,7 @@ static struct socket * sockfd_lookup(int fd, struct file **pfile)
     struct file *file;
 
     if (fd < 0 || fd >= NR_OPEN || !(file = current->filp[fd]))
-        return(NULL);
+        return NULL;
 
     if (pfile)
         *pfile = file;
@@ -149,7 +149,7 @@ static int sock_read(struct inode *inode, struct file *file, char *ubuf, int siz
 		return -EBADF;
 	}
 
-	return(sock->ops->read(sock, ubuf, size, (file->f_flags & O_NONBLOCK)));
+	return sock->ops->read(sock, ubuf, size, (file->f_flags & O_NONBLOCK));
 }
 
 static int sock_write(struct inode *inode, struct file *file, char *ubuf, int size)
@@ -162,7 +162,7 @@ static int sock_write(struct inode *inode, struct file *file, char *ubuf, int si
 		return -EBADF;
 	}
 
-	return(sock->ops->write(sock, ubuf, size,(file->f_flags & O_NONBLOCK)));
+	return sock->ops->write(sock, ubuf, size,(file->f_flags & O_NONBLOCK));
 }
 
 static int sock_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg)
@@ -175,7 +175,7 @@ static int sock_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
 		return -EBADF;
 	}
 	
-	return(sock->ops->ioctl(sock, cmd, arg));
+	return sock->ops->ioctl(sock, cmd, arg);
 }
 
 
@@ -270,7 +270,6 @@ static int sock_alloc_fd(struct socket *sock)
 
 	inode = sock->inode;
 
-	/* Find a file descriptor suitable for return to the user. */
 	file = get_empty_filp();
 	if (!file) 
 		return -EAGAIN;
@@ -406,7 +405,7 @@ int sys_accept(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen)
 	int ret;
 
 	if (fd < 0 || fd >= NR_OPEN || ((file = current->filp[fd]) == NULL))
-		return(-EBADF);
+		return -EBADF;
 
 	if (!(sock = sockfd_lookup(fd, &file)))
 	  return -ENOTSOCK;
@@ -418,7 +417,7 @@ int sys_accept(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen)
 		return -EINVAL;
 
 	if (!(newsock = sock_alloc()))
-		return(-EAGAIN);
+		return -EAGAIN;
 
 	newsock->type = sock->type;
 	newsock->ops  = sock->ops;
@@ -462,14 +461,11 @@ int sys_connect(int fd, struct sockaddr *uservaddr, int addrlen)
 	switch(sock->state)
 	{
 	case SS_UNCONNECTED:
-		/* This is ok... continue with connect */
 		break;
 	case SS_CONNECTED:
-		/* Socket is already connected */
 		return -EISCONN;
 	case SS_CONNECTING:
-		/* Not yet connected... we will check this. */
-		return(sock->ops->connect(sock, uservaddr, addrlen, file->f_flags));
+		return sock->ops->connect(sock, uservaddr, addrlen, file->f_flags);
 	default:
 		printk("NET: sock_connect: socket not unconnected\n");
 		return -EINVAL;
@@ -485,12 +481,12 @@ int sys_send(int fd, void * buff, int len, unsigned flags)
 
 
 	if (fd < 0 || fd >= NR_OPEN || ((file = current->filp[fd]) == NULL))
-		return(-EBADF);
+		return -EBADF;
 
 	if (!(sock = sockfd_lookup(fd, NULL)))
-		return(-ENOTSOCK);
+		return -ENOTSOCK;
 
-	return(sock->ops->send(sock, buff, len, (file->f_flags & O_NONBLOCK), flags));
+	return sock->ops->send(sock, buff, len, (file->f_flags & O_NONBLOCK), flags);
 }
 
 int sys_sendto(int fd, void * buff, int len, unsigned flags, struct sockaddr *addr, int addr_len)
@@ -503,8 +499,8 @@ int sys_sendto(int fd, void * buff, int len, unsigned flags, struct sockaddr *ad
 	if (!(sock = sockfd_lookup(fd, NULL))) 
         return -ENOTSOCK;
 
-	return(sock->ops->sendto(sock, buff, len, (file->f_flags & O_NONBLOCK),
-							  flags, addr, addr_len));
+	return sock->ops->sendto(sock, buff, len, (file->f_flags & O_NONBLOCK),
+							  flags, addr, addr_len);
 }
 
 int sys_recv(int fd, void * buff, int len, unsigned flags)
@@ -518,7 +514,7 @@ int sys_recv(int fd, void * buff, int len, unsigned flags)
 	if (!(sock = sockfd_lookup(fd, NULL)))
 		return -ENOTSOCK;
 
-	return(sock->ops->recv(sock, buff, len,(file->f_flags & O_NONBLOCK), flags));
+	return sock->ops->recv(sock, buff, len,(file->f_flags & O_NONBLOCK), flags);
 
 }
 
@@ -533,7 +529,7 @@ int sys_recvfrom(int fd, void * buff, int len, unsigned flags, struct sockaddr *
 	if (!(sock = sockfd_lookup(fd, NULL)))
 		return -ENOTSOCK;
 
-	return(sock->ops->recvfrom(sock, buff, len, (file->f_flags & O_NONBLOCK), flags, addr, addr_len));
+	return sock->ops->recvfrom(sock, buff, len, (file->f_flags & O_NONBLOCK), flags, addr, addr_len);
 }
 
 int socket_register(int family, struct family_ops *ops)
