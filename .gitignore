@@ -25,3 +25,6 @@ tags
 *.files
 *.tags
 *.tag
+*.bak
+*.uvgui.*
+*.ini
