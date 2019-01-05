@@ -27,3 +27,5 @@ tags
 *.bak
 *.uvgui.*
 *.ini
+output
+listing
