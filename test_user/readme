@@ -1,0 +1,6 @@
+为了读写flash让的文件 又懒的分析ext jffs fat等文件系统我写了这个ofs文件系统
+全名为one file system即它支持一个文件,实际应用中完全无卵用
+
+mkofs_src 为生成ofs映像的代码
+mkofs     为生成ofs映像的工具
+

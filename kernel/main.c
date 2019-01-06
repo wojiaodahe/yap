@@ -226,7 +226,8 @@ int  test_nand(void *p)
 	int fd;
 	int ret;
 
-	if ((fd = sys_open("/nand/abc/test_ofs.c", 0, 0)) < 0)
+#if 0
+	if ((fd = sys_open("/nand/abc/prg.bin", 0, 0)) < 0)
 	{
 		printk("open error");
 	}
@@ -241,6 +242,8 @@ int  test_nand(void *p)
 			printk("%c", buff[i]);
 		}
 	}
+#endif
+    sys_exec("/nand/abc/prg.bin");
 	while (1)
 		OS_Sched();
 

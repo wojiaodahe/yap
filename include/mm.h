@@ -5,6 +5,8 @@
 #define PERM_RO					(0x1)
 #define PERM_FORBID				(0x0)
 
+#define MEMMORY_ATTR_USER_SPACE (1)
+
 
 #if 0
 typedef struct 

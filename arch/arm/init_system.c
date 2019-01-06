@@ -321,7 +321,7 @@ int init_system(void)
     disable_watch_dog();
   
     init_clock();
-#if 0
+#if 1
     create_page_table();
     start_mmu();
 #else

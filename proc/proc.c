@@ -1,4 +1,5 @@
 #include "head.h"
+#include "system.h"
 #include "kernel.h"
 #include "interrupt.h"
 #include "error.h"
@@ -10,6 +11,7 @@
 #include "printk.h"
 #include "vfs.h"
 #include "inet.h"
+#include "mm.h"
 
 extern void pcb_list_add(pcb_t *head, pcb_t *pcb);
 extern pcb_t * pcb_list_init(void);
@@ -66,6 +68,135 @@ void thread_exit(void)
     {
         ssleep(1);
     }
+}
+
+int user_thread(int (*f)(void *), void *args, unsigned int prio, unsigned long vaddr, unsigned int size)
+{
+	unsigned int sp;
+    unsigned long paddr;
+	
+	pcb_t *pcb = (pcb_t *)alloc_pcb();
+	if (!pcb)
+		return -ENOMEM;
+
+    paddr = get_user_program_space();
+    if (!paddr)
+        return -ENOMEM;
+
+    MMU_SetMTT(vaddr, size, paddr, MEMMORY_ATTR_USER_SPACE);
+
+	sp 				= (sp + size - 1);
+	pcb->sp 		= sp;
+//	pcb->sp_bottom  = sp;
+	pcb->sp_size 	= TASK_STACK_SIZE;
+
+    pcb->prio       = prio;
+	pcb->pid 		= pid++;
+	pcb->time_slice = 5;
+	pcb->ticks 		= 5;
+	pcb->root 		= current->root;
+	pcb->pwd  		= current->pwd;
+	memcpy(pcb->filp, current->filp, sizeof (pcb->filp));
+	
+	DO_INIT_SP(pcb->sp, f, args, thread_exit, 0x1f & get_cpsr(), 0);
+
+	enter_critical();
+	pcb_list_add(&proc_list[pcb->prio].head, pcb);
+	exit_critical();
+
+	return 0;
+}
+
+int sys_fork(void)
+{
+
+}
+
+/*
+ * 在实现fork之前 exec不会用path指向的可执行文件覆盖当前进程
+ * 而是重新申请空间去执行这个程序
+ */
+int sys_exec(char *path, void *arg)
+{
+    int fd;
+    int ret;
+	unsigned int sp;
+    unsigned long paddr;
+
+    /*
+     * elf格式分析及装载代码尚未实现,所以不使用elf文件作为用户程序,
+     * 而是链接用户程序的时候指定入口地址为0x80000000
+     * 再用objcopy命令生成可直接运行的bin文件当作用户进程
+     */
+    unsigned long vaddr = 0x80000000;
+
+    /*
+     * 真TM尴尬,目前代码也是只实现以1M大小为单位的段式内存映射,未实现以1k 4k 64大小
+     * 的页映射,也没有打算去实现,所以这里不管进程大小是多大都是以1M为单位进行分配空
+     */
+    unsigned int size  = 0x100000 ;
+    /*
+     * 对size的解释
+     * size为程序运行时总共需要的空间 包括代码段的大小 数据段的大小 BSS段的大小 程序
+     * 运行栈空间的大小 如果后面实现用户空间的malloc那size还包括一个默认的堆大小
+     * 
+     * 所以在实现了elf格式分析代码之后,size值的计算为: 
+     * sizeof (text) + sizeof (data) + sizeof (bss) + sizeof (stack) + ...
+     * 当前stack的默认大小为4k
+     *
+     * 说到stack突然又想起一个bug: alloc_stack的实现并不完美 更没有实现 free_stack
+     */
+	
+    if ((fd = sys_open(path, 0, 0)) < 0)
+	{
+		printk("open error");
+        return fd;
+	}
+
+	pcb_t *pcb = (pcb_t *)alloc_pcb();
+	if (!pcb)
+		return -ENOMEM;
+
+    /*
+     * 啥时候真的有超要1M大小的用户程序在我的操作系统运行,那我就改改下面这个函数
+     */
+    paddr = get_user_program_space();
+    if (!paddr)
+        return -ENOMEM;
+
+    /*
+     *  此处应该实现一个kernel通用的mmap函数,不应该直接调用处理器相关代码,移植性好差哦
+     */
+	set_l1_parallel_descriptor(vaddr, vaddr + size, paddr, MMU_SECDESC_WB);
+		
+    ret = sys_read(fd, (char *)vaddr, size);
+    if (ret < 0)
+        return ret;
+
+    //(vaddr + size - 4);
+	sp 				= vaddr + size - 4;
+	pcb->sp 		= sp;
+//	pcb->sp_bottom  = sp;
+	pcb->sp_size 	= TASK_STACK_SIZE;
+
+    pcb->prio       = PROCESS_PRIO_NORMAL;
+	pcb->pid 		= pid++;
+	pcb->time_slice = 5;
+	pcb->ticks 		= 5;
+	pcb->root 		= current->root;
+	pcb->pwd  		= current->pwd;
+	memcpy(pcb->filp, current->filp, sizeof (pcb->filp));
+	
+    /*
+     * 0x1f应改0x10 即执行用户程序的时候处理器处于用户模式
+     */
+	DO_INIT_SP(pcb->sp, vaddr, arg, thread_exit, 0x1f & get_cpsr(), 0);
+
+	enter_critical();
+	pcb_list_add(&proc_list[pcb->prio].head, pcb);
+	exit_critical();
+
+	return 0;
 }
 
 int kernel_thread(int (*f)(void *), void *args)
@@ -432,15 +563,15 @@ int OS_INIT_PROCESS(void *argv)
 	dm9000_module_init();
 
 	//create_pthread(test_get_ticks, (void *)1, 10);
-	kernel_thread(test_open_led0, (void *)2);
-	kernel_thread(test_open_led1, (void *)2);
-	kernel_thread(test_open_led2, (void *)2);
+//	kernel_thread(test_open_led0, (void *)2);
+//	kernel_thread(test_open_led1, (void *)2);
+//	kernel_thread(test_open_led2, (void *)2);
 	kernel_thread(test_open_led3, (void *)2);
-//	kernel_thread(test_nand, (void *)2);
+	kernel_thread(test_nand, (void *)2);
 //	kernel_thread(test_user_syscall_open, (void *)2);
-	kernel_thread_prio(test_user_syscall_printf, (void *)2, PROCESS_PRIO_HIGH);
+//	kernel_thread_prio(test_user_syscall_printf, (void *)2, PROCESS_PRIO_HIGH);
 //	kernel_thread(test_wait_queue, (void *)2);
-	kernel_thread(test_socket, (void *)2);
+//	kernel_thread(test_socket, (void *)2);
 //	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
     
     OS_RUNNING = 1;
