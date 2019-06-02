@@ -24,6 +24,7 @@ static struct proc_list_head proc_list[PROCESS_PRIO_BUTT];
 static pcb_t sleep_proc_list_head;
 static unsigned int OS_TICKS = 0;
 static unsigned int pid = 0;
+unsigned int preempt_count = 0;
 unsigned char OS_RUNNING = 0;
 extern unsigned int OSIntNesting;
 
@@ -144,6 +145,23 @@ int kernel_thread_prio(int (*f)(void *), void *args, unsigned int prio)
 	return 0;
 }
 
+#if 0
+
+void add_preempt_count(unsigned int val)
+{
+    preempt_count += val;
+}
+
+void sub_preempt_count(unsigned int val)
+{
+    if (preempt_count >= val)
+        preempt_count -= val; 
+    else
+        preempt_count = 0;
+}
+
+#endif
+
 pcb_t *OS_GetNextReady(void)
 {
     int prio;
@@ -175,7 +193,9 @@ pcb_t *OS_GetNextReady(void)
 
 void OS_IntSched()
 {
-	
+	if (preempt_count > 0)
+        return;
+
 	current = OS_GetNextReady();
     
 	__int_schedule();
@@ -189,7 +209,11 @@ void OS_Sched()
         printk("OS_Sched Before OS_RUNNING\n");
         panic();
     }
-	kernel_disable_irq();
+
+    if (preempt_count > 0)
+        return;
+
+    kernel_disable_irq();
     
     next_run = OS_GetNextReady();
 	
@@ -373,6 +397,14 @@ extern int create_stdin_stdout_stderr_device(void);
 extern void bus_list_init(void);
 extern int platform_bus_init(void);
 extern int test_exit(void *arg);
+extern int test_completion(void *arg);
+extern int spi_module_init(void);
+extern int test_oled(void *arg);
+extern int dm9000_module_init(void);
+extern void s3c24xx_controler_init(void);
+extern void spi_info_jz2440_init(void);
+extern int spi_oled_init(void);
+extern void sys_timer_init(void);
 int OS_INIT_PROCESS(void *argv)
 {
 	int ret;
@@ -431,6 +463,11 @@ int OS_INIT_PROCESS(void *argv)
 	net_core_init();
 	dm9000_module_init();
 
+    spi_module_init();
+    s3c24xx_controler_init();
+    spi_info_jz2440_init();
+    spi_oled_init();
+
 	//create_pthread(test_get_ticks, (void *)1, 10);
 	kernel_thread(test_open_led0, (void *)2);
 	kernel_thread(test_open_led1, (void *)2);
@@ -441,6 +478,8 @@ int OS_INIT_PROCESS(void *argv)
 	kernel_thread_prio(test_user_syscall_printf, (void *)2, PROCESS_PRIO_HIGH);
 //	kernel_thread(test_wait_queue, (void *)2);
 	kernel_thread(test_socket, (void *)2);
+	kernel_thread(test_completion, (void *)2);
+	kernel_thread(test_oled, (void *)2);
 //	kernel_thread_prio(test_exit,   (void *)2, PROCESS_PRIO_LOW);
     
     OS_RUNNING = 1;
@@ -452,6 +491,8 @@ int OS_INIT_PROCESS(void *argv)
 		//printk("OS Init Process\r\n");
 		OS_Sched();
 	}
+    
+    return 0;
 }
 
 int OS_Init(void)

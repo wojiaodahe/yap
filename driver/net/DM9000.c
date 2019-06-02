@@ -138,7 +138,7 @@ static void int_issue(void *priv)
 int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev);
 struct net_device dm9000_dev =
 {
-	.ip 			 = 0x01020302,
+	.ip 			 = 0xc0a80105,
 	.netmask		 = 0xffffff00,
 	.gw  			 = 0x01020301,
 	.mtu			 = 1514,
@@ -538,7 +538,7 @@ void testNetwork(void)
 	}
 }
 
-int dm9000_module_init()
+int dm9000_module_init(void)
 {
 	char mac[6] = {0x00, 0x1c, 0x82, 0x00, 0x33, 0x1f};
 	DM9000_init(mac);

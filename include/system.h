@@ -31,7 +31,7 @@
  * 时钟初始化参数
  */
 #define S3C2410_MPLL_200MHZ     ((0x5c << 12) | (0x04 << 4) | (0x00))
-#define S3C2440_MPLL_200MHZ     ((0x5c << 12) | (0x01 << 4) | (0x02))
+#define S3C2440_MPLL_200MHZ     ((92 << 12) | (1 << 4) | (1 << 0))
 
 int SET_IF(void);
 void WR_IF(int cpsrValue);

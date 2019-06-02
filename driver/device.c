@@ -77,14 +77,53 @@ int driver_for_each()
     return 0;
 }
 
+/*
+ * !!!!!!!!!!!!!!!!!!!!BUGS!!!!!!!!!!!!!!!!!!!!!!!!
+ * 实现spi框架的过程中添加
+ * 功能未实现
+ * 未测试
+ */
+struct device *next_device()
+{
+    struct device *dev = NULL;
+    //struct device_private *dev_pri;
+
+    return dev;
+}
+
+/*
+ * !!!!!!!!!!!!!!!!!!!!BUGS!!!!!!!!!!!!!!!!!!!!!!!!
+ * 实现spi框架的过程中添加
+ * 功能未实现
+ * 未测试
+ */
+int device_for_each_child(struct device *parent, void *data, int (*fn)(struct device *dev, void *data))
+{
+    int error = 0;
+    struct device *child;
+
+    return 0;
+
+    while (!error)
+    {
+       child = next_device();
+       if (!child)
+           break;
+       error = fn(child, data);
+    }
+
+    return error;
+}
+
 void device_initialize(struct device *dev)
 {
-
+    INIT_LIST_HEAD(&dev->list);
+    dev->p.device = dev;
 }
 
 int driver_register(struct device_driver *drv)
 {
-	int ret;
+	int ret = 0;
     struct device *dev;
     struct list_head *dev_list;
     struct bus_type *this_bus_head;
@@ -119,7 +158,7 @@ int driver_register(struct device_driver *drv)
 
     list_add_tail(&drv->list, &this_bus_head->drv_head);
 
-    return 0;
+    return ret;
 }
 
 void release_drv_struct(struct device_driver *drv)
@@ -163,9 +202,34 @@ int driver_unregister(struct device_driver *drv)
     return 0;
 }
 
+int device_add(struct device *dev)
+{
+    return 0;
+}
+
+void device_del(struct device *dev)
+{
+
+}
+
+int dev_set_drvdata(struct device *dev, void *data)
+{
+    dev->p.driver_data  = data;
+    
+    return 0;
+}
+
+void *dev_get_drvdata(struct device *dev)
+{
+    if (dev)
+        return dev->p.driver_data;
+
+    return NULL;
+}
+
 int device_register(struct device *dev)
 {
-	int ret;
+	int ret = 0;
     struct device_driver *drv;
     struct list_head *drv_list;
     struct bus_type *this_bus_head;
@@ -176,7 +240,7 @@ int device_register(struct device *dev)
     this_bus_head = bus_find_bus_head(dev->bus);
     if (!this_bus_head)
     {
-        printk("Unregistered BUS Type: %s\n", dev->bus->name);
+        printk("Unregistered BUS Type: %s %s\n", dev->bus->name, __func__);
 		return -EINVAL;
     }
 	
@@ -190,17 +254,16 @@ int device_register(struct device *dev)
                 ret = drv->bus->probe(dev);
             else if (drv->probe)
                 ret = drv->probe(dev);
-			if (!ret)
-			{
-				list_add_tail(&dev->list, &this_bus_head->dev_head);
-				return 0;
-			}
+            break;
         }
     }
+			
+    if (ret < 0)
+	    dev->driver = NULL;
+    else
+        list_add_tail(&dev->list, &this_bus_head->dev_head);
 
-	dev->driver = NULL;
-	return ret;
-
+    return ret;
 }
 
 void release_dev_struct(struct device *dev)

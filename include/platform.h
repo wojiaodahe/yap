@@ -49,6 +49,7 @@ extern int platform_driver_register(struct platform_driver *pdrv);
 extern void platform_driver_unregister(struct platform_driver *pdrv);
 extern int platform_device_register(struct platform_device *pdev);
 extern int platform_device_unregister(struct platform_device *pdev);
+struct platform_device *platform_alloc_device(char *name, int id);
 
 #endif
 

@@ -20,9 +20,9 @@ int led_device_init()
 {
 	int ret;
 
-	led_resource0[0].start = 0x56000010;
-	led_resource0[0].end   = 0x56000014;
-	led_resource0[0].name  = "GPIOB";
+	led_resource0[0].start = 0x56000050;
+	led_resource0[0].end   = 0x56000054;
+	led_resource0[0].name  = "GPIOF";
 	led_resource0[0].flag  = IORESOURCE_MEM;
 
 	led_resource0[1].start = 5;
@@ -40,13 +40,13 @@ int led_device_init()
     	return ret;
 #if 1
 ////////////////////////////////////////////////////////////
-	led_resource1[0].start = 0x56000010;
-	led_resource1[0].end   = 0x56000014;
-	led_resource1[0].name  = "GPIOB";
+	led_resource1[0].start = 0x56000050;
+	led_resource1[0].end   = 0x56000054;
+	led_resource1[0].name  = "GPIOF";
 	led_resource1[0].flag  = IORESOURCE_MEM;
 
-	led_resource1[1].start = 6;
-	led_resource1[1].end   = 6;
+	led_resource1[1].start = 4;
+	led_resource1[1].end   = 4;
 	led_resource1[1].name  = "LEDIO_REGION";
 	led_resource1[1].flag  = IORESOURCE_IO;
 
@@ -60,13 +60,13 @@ int led_device_init()
     	return ret;
 
 ////////////////////////////////////////////////////////////
-	led_resource2[0].start = 0x56000010;
-	led_resource2[0].end   = 0x56000014;
-	led_resource2[0].name  = "GPIOB";
+	led_resource2[0].start = 0x56000050;
+	led_resource2[0].end   = 0x56000054;
+	led_resource2[0].name  = "GPIOF";
 	led_resource2[0].flag  = IORESOURCE_MEM;
 
-	led_resource2[1].start = 7;
-	led_resource2[1].end   = 7;
+	led_resource2[1].start = 6;
+	led_resource2[1].end   = 6;
 	led_resource2[1].name  = "LEDIO_REGION";
 	led_resource2[1].flag  = IORESOURCE_IO;
 
@@ -79,6 +79,7 @@ int led_device_init()
     if (ret < 0)
     	return ret;
 
+#if 0
 ////////////////////////////////////////////////////////////
 	led_resource3[0].start = 0x56000010;
 	led_resource3[0].end   = 0x56000014;
@@ -98,6 +99,7 @@ int led_device_init()
     ret = platform_device_register(&led_dev3);
     if (ret < 0)
     	return ret;
+#endif
 #endif
 	return 0;
 }

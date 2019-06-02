@@ -8,10 +8,10 @@
 extern unsigned char OS_RUNNING;
 
 static struct irq_desc *irq_desc_table[MAX_IRQ_NUMBER];
-unsigned int OSIntNesting = 0;
 static unsigned int cirtical_lock = 0;
+unsigned int OSIntNesting = 0;
 
-/* 暂不支持中断嵌套, OSIntNesting == 1 表示当前程序处理中断当中, OSIntNesting = 0 表示未处理中断当中*/
+/* 暂不支持中断嵌套, OSIntNesting == 1 表示当前程序处理中断当中, OSIntNesting = 0 表示未处于中断当中*/
 void kernel_disable_irq()
 {
     if (OSIntNesting > 0) /* 内核不支持中断嵌套, OSIntNesting = 1的时候表示已经处于中断当中, 这时中断是关闭的 */
@@ -43,7 +43,9 @@ void exit_critical()
     if (OSIntNesting > 0) /*   */
         return;
 
-    cirtical_lock--;
+    if (cirtical_lock > 0)
+        cirtical_lock--;
+    
     if (cirtical_lock)
         return;
 

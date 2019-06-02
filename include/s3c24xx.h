@@ -95,6 +95,47 @@
 #define	TCNTO0		(*(volatile unsigned long *)0x51000014)
 #define TCONB4  	(*(volatile unsigned long *)(0x51000000 + 0x3c))
 
+/* SPI */
+#define	SPCON0		(*(volatile unsigned long *)0x59000000)
+#define	SPSTA0		(*(volatile unsigned long *)0x59000004)
+#define	SPPIN0		(*(volatile unsigned long *)0x59000008)
+#define	SPPRE0		(*(volatile unsigned long *)0x5900000C)
+#define	SPTDAT0	(*(volatile unsigned char *)0x59000010)
+#define	SPRDAT0	(*(volatile unsigned char *)0x59000014)
+
+#define	SPCON1		(*(volatile unsigned long *)0x59000020)
+#define	SPSTA1		(*(volatile unsigned long *)0x59000024)
+#define	SPPIN1		(*(volatile unsigned long *)0x59000028)
+#define	SPPRE1		(*(volatile unsigned long *)0x5900002C)
+#define	SPTDAT1	(*(volatile unsigned char *)0x59000030)
+#define	SPRDAT1 	(*(volatile unsigned char *)0x59000034)
+
+/* I2C registers */
+#define IICCON  	(*(volatile unsigned *)0x54000000) // IIC control
+#define IICSTAT 	(*(volatile unsigned *)0x54000004) // IIC status
+#define IICADD  	(*(volatile unsigned *)0x54000008) // IIC address
+#define IICDS   	(*(volatile unsigned *)0x5400000c) // IIC data shift
+#define IICLC		(*(volatile unsigned *)0x54000010)	 //IIC multi-master line control
+
+
+// LCD CONTROLLER
+#define LCDCON1     (*(volatile unsigned long *)0x4d000000) //LCD control 1
+#define LCDCON2     (*(volatile unsigned long *)0x4d000004) //LCD control 2
+#define LCDCON3     (*(volatile unsigned long *)0x4d000008) //LCD control 3
+#define LCDCON4     (*(volatile unsigned long *)0x4d00000c) //LCD control 4
+#define LCDCON5     (*(volatile unsigned long *)0x4d000010) //LCD control 5
+#define LCDSADDR1   (*(volatile unsigned long *)0x4d000014) //STN/TFT Frame buffer start address 1
+#define LCDSADDR2   (*(volatile unsigned long *)0x4d000018) //STN/TFT Frame buffer start address 2
+#define LCDSADDR3   (*(volatile unsigned long *)0x4d00001c) //STN/TFT Virtual screen address set
+#define REDLUT      (*(volatile unsigned long *)0x4d000020) //STN Red lookup table
+#define GREENLUT    (*(volatile unsigned long *)0x4d000024) //STN Green lookup table 
+#define BLUELUT     (*(volatile unsigned long *)0x4d000028) //STN Blue lookup table
+#define DITHMODE    (*(volatile unsigned long *)0x4d00004c) //STN Dithering mode
+#define TPAL        (*(volatile unsigned long *)0x4d000050) //TFT Temporary palette
+#define LCDINTPND   (*(volatile unsigned long *)0x4d000054) //LCD Interrupt pending
+#define LCDSRCPND   (*(volatile unsigned long *)0x4d000058) //LCD Interrupt source
+#define LCDINTMSK   (*(volatile unsigned long *)0x4d00005c) //LCD Interrupt mask
+#define LPCSEL      (*(volatile unsigned long *)0x4d000060) //LPC3600 Control
 
 #define GSTATUS1    (*(volatile unsigned long *)0x560000B0)
 

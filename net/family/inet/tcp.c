@@ -311,7 +311,7 @@ static void tcp_timer_entry(void *data)
             isk->status = CLOSED;
             /* xxxxxxxxxxxxxxxxxxxxxxx
              * wake_up 上层应用
-             * */
+             * */    
         }
         return;
     case ESTABLISHED:

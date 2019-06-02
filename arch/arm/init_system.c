@@ -22,19 +22,19 @@ void init_memory(void)
 
     /* SDRAM 13个寄存器的值 */
     unsigned long  const    mem_cfg_val[] = {
-					      0x22011110,     //BWSCON
+					      0x22000000,     //BWSCON
 					      0x00000700,     //BANKCON0
 					      0x00000700,     //BANKCON1
 					      0x00000700,     //BANKCON2
 					      0x00000700,     //BANKCON3
 					      0x00000700,     //BANKCON4
 					      0x00000700,     //BANKCON5
-					      0x00018005,     //BANKCON6
-					      0x00018005,     //BANKCON7
-					      0x008C07A3,     //REFRESH
+					      0x00018001,     //BANKCON6
+					      0x00018001,     //BANKCON7
+					      0x008404f5,     //REFRESH
 					      0x000000B1,     //BANKSIZE
-					      0x00000030,     //MRSRB6
-					      0x00000030,     //MRSRB7
+					      0x00000020,     //MRSRB6
+					      0x00000020,     //MRSRB7
 					    };
 
 
@@ -107,6 +107,11 @@ void create_page_table(void)
      */
     virtuladdr = 0x56000000;
     physicaladdr = 0x56000000;
+    *(mmu_tlb_base + (virtuladdr >> 20)) = (physicaladdr & 0xFFF00000) | \
+                                            MMU_SECDESC;
+    
+    virtuladdr = 0x59000000;
+    physicaladdr = 0x59000000;
     *(mmu_tlb_base + (virtuladdr >> 20)) = (physicaladdr & 0xFFF00000) | \
                                             MMU_SECDESC;
     
@@ -272,7 +277,7 @@ void init_clock(void)
 {
 	int r1;
     // LOCKTIME = 0x00ffffff;   // 使用默认值即可
-    CLKDIVN  = 0x03;            // FCLK:HCLK:PCLK=1:2:4, HDIVN=1,PDIVN=1
+    CLKDIVN  = 0x05;            // FCLK:HCLK:PCLK=1:2:4, HDIVN=1,PDIVN=1
 
     /* 如果HDIVN非0，CPU的总线模式应该从“fast bus mode”变为“asynchronous bus mode” */
 	__asm
@@ -321,13 +326,13 @@ int init_system(void)
     disable_watch_dog();
   
     init_clock();
-#if 0
+#if 1
     create_page_table();
     start_mmu();
 #else
     MMU_Init();
 #endif
-	init_memory();
+	//init_memory();
 	return 0;
 }
 

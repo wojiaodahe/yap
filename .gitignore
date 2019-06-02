@@ -13,7 +13,6 @@
 *.axf
 *.crane
 *.bak
-*.uvopt
 *.inp
 *.plg
 *.map
@@ -25,7 +24,6 @@ tags
 *.tags
 *.tag
 *.bak
-*.uvgui.*
 *.ini
 output
 listing

@@ -129,7 +129,7 @@
           </Simulator>
           <Target>
             <UseTarget>1</UseTarget>
-            <LoadApplicationAtStartup>1</LoadApplicationAtStartup>
+            <LoadApplicationAtStartup>0</LoadApplicationAtStartup>
             <RunToMain>1</RunToMain>
             <RestoreBreakpoints>1</RestoreBreakpoints>
             <RestoreWatchpoints>1</RestoreWatchpoints>
@@ -163,10 +163,10 @@
             <RunIndependent>0</RunIndependent>
             <UpdateFlashBeforeDebugging>0</UpdateFlashBeforeDebugging>
             <Capability>1</Capability>
-            <DriverSelection>4096</DriverSelection>
+            <DriverSelection>4098</DriverSelection>
           </Flash1>
-          <bUseTDR>1</bUseTDR>
-          <Flash2>BIN\UL2ARM.DLL</Flash2>
+          <bUseTDR>0</bUseTDR>
+          <Flash2>Segger\JLTAgdi.dll</Flash2>
           <Flash3>"D:\swap\Coding\TinyOS\JLinkArm_ram_or_nand.ini" ()</Flash3>
           <Flash4></Flash4>
         </Utilities>
@@ -437,6 +437,11 @@
               <FileType>5</FileType>
               <FilePath>.\include\pcb.h</FilePath>
             </File>
+            <File>
+              <FileName>spinlock_types.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\include\spinlock_types.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -492,6 +497,16 @@
               <FileType>1</FileType>
               <FilePath>.\proc\wait.c</FilePath>
             </File>
+            <File>
+              <FileName>complete.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\proc\complete.c</FilePath>
+            </File>
+            <File>
+              <FileName>spinlock.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\proc\spinlock.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -516,6 +531,11 @@
               <FileName>init_system.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\arch\arm\init_system.c</FilePath>
+            </File>
+            <File>
+              <FileName>arch_spinlock.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\arch\arm\asm\arch_spinlock.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -596,6 +616,26 @@
               <FileName>DM9000.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\driver\net\DM9000.c</FilePath>
+            </File>
+            <File>
+              <FileName>spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\driver\spi\spi.c</FilePath>
+            </File>
+            <File>
+              <FileName>spi_s3c24xx.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\driver\spi\spi_s3c24xx.c</FilePath>
+            </File>
+            <File>
+              <FileName>spi_jz2440_info.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\driver\spi\spi_jz2440_info.c</FilePath>
+            </File>
+            <File>
+              <FileName>spi_oled.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\driver\spi\spi_oled.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -736,6 +776,16 @@
               <FileName>netif.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\net\netif.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>test</GroupName>
+          <Files>
+            <File>
+              <FileName>oled.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\test\oled.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1172,6 +1222,11 @@
               <FileType>5</FileType>
               <FilePath>.\include\pcb.h</FilePath>
             </File>
+            <File>
+              <FileName>spinlock_types.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\include\spinlock_types.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1227,6 +1282,16 @@
               <FileType>1</FileType>
               <FilePath>.\proc\wait.c</FilePath>
             </File>
+            <File>
+              <FileName>complete.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\proc\complete.c</FilePath>
+            </File>
+            <File>
+              <FileName>spinlock.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\proc\spinlock.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1251,6 +1316,11 @@
               <FileName>init_system.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\arch\arm\init_system.c</FilePath>
+            </File>
+            <File>
+              <FileName>arch_spinlock.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\arch\arm\asm\arch_spinlock.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1331,6 +1401,26 @@
               <FileName>DM9000.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\driver\net\DM9000.c</FilePath>
+            </File>
+            <File>
+              <FileName>spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\driver\spi\spi.c</FilePath>
+            </File>
+            <File>
+              <FileName>spi_s3c24xx.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\driver\spi\spi_s3c24xx.c</FilePath>
+            </File>
+            <File>
+              <FileName>spi_jz2440_info.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\driver\spi\spi_jz2440_info.c</FilePath>
+            </File>
+            <File>
+              <FileName>spi_oled.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\driver\spi\spi_oled.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1471,6 +1561,16 @@
               <FileName>netif.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\net\netif.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>test</GroupName>
+          <Files>
+            <File>
+              <FileName>oled.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\test\oled.c</FilePath>
             </File>
           </Files>
         </Group>

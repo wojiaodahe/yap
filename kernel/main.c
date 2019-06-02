@@ -8,6 +8,8 @@
 #include "wait.h"
 #include "socket.h"
 #include "inet_socket.h"
+#include "timer.h"
+#include "completion.h"
 
 int  test_get_ticks(void *p)
 {
@@ -282,6 +284,30 @@ int test_exit(void *arg)
     printk("thread exit!\n");
     while (1)
         ;
+}
+
+void test_completion_func(void *x)
+{
+    complete(x);
+}
+
+struct completion test_done;
+static struct timer_list test_completion_timer = 
+{
+    .expires = 100,
+    .data = &test_done,
+    .function = test_completion_func
+};
+
+int test_completion(void *arg)
+{
+    add_timer(&test_completion_timer);
+    while (1)
+    {
+        mod_timer(&test_completion_timer, 100);
+        printk("Test completion test_done.done %d\n", test_done.done);
+        wait_for_completion(&test_done);
+    }
 }
 
 extern int s3c24xx_init_tty(void);

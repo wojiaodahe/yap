@@ -4,6 +4,7 @@
 #include "platform.h"
 #include "common.h"
 #include "syslib.h"
+#include "kmalloc.h"
 
 #define to_platform_driver(drv) container_of((drv), struct platform_driver, driver)
 #define to_platform_device(dev) container_of((dev), struct platform_device, dev)
@@ -78,6 +79,22 @@ struct resource *platform_get_resource(struct platform_device *pdev, unsigned in
     }
 
     return NULL;
+}
+
+struct platform_device *platform_alloc_device(char *name, int id)
+{
+    struct platform_device *pdev = NULL;
+
+    pdev = kmalloc(sizeof (struct platform_device));
+    if (!pdev)
+        return NULL;
+
+    pdev->id    = id;
+    pdev->name  = name;
+
+    device_initialize(&pdev->dev);
+
+    return pdev;
 }
 
 int platform_driver_register(struct platform_driver *pdrv)
