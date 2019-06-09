@@ -50,5 +50,41 @@ tcp连续读读大于8k字节的数据会导致发送ack(或其他数据)失败
 是不发,这就导至最后发了多个同样的ack
    2:确实丢包  tcp检查到丢包之后会连续发送期待的那个包同样是发送多个相同的ack
 
+
+4: 添加spi驱动框架及complete api 之后发现上层在调用驱动写spi oled 一段时候之后会线程卡死
+
+经调试 实际是在 spi_s3c24xx.c的 s3c24xx_spi_transfer函数里调用了wait_for_completion一直没有被唤醒
+
+调试方法: 
+       在keil里在wait_completion(确切的是wait_event里)设置断点,进入到断点之后在keil里查看调用栈,(wait_event是一个宏,不能设置断点,所以要修改这个宏修改为一个函数)
+       因为调用wait_event的模块并不多，所以多进几次断点就会发现有test_oled->OLEDPrint->sys_ioctl->oled_ioctl->spi_write->s3c24xx_spi_transfer->wait_for_completion的一个调用栈
+       
+       spi驱动控制器为中断方式且每一个字节都会产生中断, 在spi driver里记录出总共写的字节数 并且在 spi中断函数里记录产生的中断数,在程序“卡死”之后在keil里查看这两个值
+       会发现写的总字节数大于产生中断数并且spi控制器是ready状态,这就说明spi控制器没产生中断或者spi中断丢失
     
+       在s3c_24xx_irq.c的 common_irq_handler()函数里记录SRCPND 及 INTPND寄存器中断产生spi中断次数(spi 1 中断在两个寄存器里都在第29位表示， 所以只要 SRCPND & (1 << 29)为1就记录一次:SRCPND_CNT++ INTPND同理) 发现SRCPND产生的spi中断次数比INTPND里多。
+
+       研究s3c2440的中断寄存器手册
+       SRCPND: 会记录此刻所有产生中断请求的中断源, 无视优先级 和 中断屏蔽. 即：只要某一中断源产生中断请求,不管它是否在INTMASK中被屏蔽或它的优先级高低,都会在SRCPND中表示出来,并且可以同时表示多个中断源. 假如 外部中断(key) 定时器 adc spi 同时产生了中断,SRCPND会用4位表示.
+       INTPND: 会记录 此时产生的 且 没有被屏蔽的 且 优先级最高的 一个 中断
+
+       清中断：SRCPND 会把写入值为1的bit清掉(写入0x80000001 则会把第31位和第0位清0,其他位保持不变) 此特性保证同时发生中断也不会丢中断(同时发生n个中断->cpu处理优先级高的->清掉高优先级标志位->退出中断(同时使能中断)->由于只清掉SRCPND高优先级标识位所以cpu会立即再次产生中断->处理优先级次高的中断->...)
+
+       代码中清中断的方式:
+       oft = INTOFFSET;
+       SRCPND |= (1 << oft)
+       翻译为伪汇编：
+       
+1:       ldr r0 [INTOFFSET]
+2:       ldr r1 [SRCPND] 
+3:       orr r1 (1 << r0) 
+4:       str r1 [SRCPND]
+       如果同时产生了中断或在第2行代码之前又产生了新的中断请求,则SRCPND中会有多位为1, r1中同样也会多位为1,再次把r1写回到SRCPND时会同时清掉多个中断请求,SPI中断就会这样丢失
+
+       代码修改为
+       oft = INTOFFSET;
+       SRCPND = (1 << oft) 
+       之后问题解决
     
+       调试代码在 debug/lost_spi_irq目录下面
+

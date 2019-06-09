@@ -29,6 +29,12 @@ int s3c24xx_spi_setup(struct spi_device *dev)
     unsigned int cpha = 0;
     unsigned int div = 0;
     struct s3c24xx_spi_info *info;
+	
+    if (!dev)
+	{
+		printk("in fun: %s dev is NULL\n", __func__);
+		return -ENODEV;
+	}
 
 #if 1
     info = spi_master_get_devdata(dev->master);
@@ -75,6 +81,23 @@ void s3c24xx_gpio_setpin(unsigned short pin, unsigned int val)
         GPFDAT &= ~(1 << pin);
 }
 
+int s3c24xx_check_status(struct s3c24xx_spi_info *info)
+{
+    unsigned long status;
+
+    status = readb(info->reg_base_phy + S3C2440_SPSTA);
+    
+    status &= 0x07;
+
+    if (status & 0x01)
+        return 0;
+    else if (!status)
+        return -EBUSY;
+    else 
+        return -EIO;
+}
+
+
 int s3c24xx_spi_transfer(struct spi_device *dev, struct spi_message *msg)
 {
     int ret = 0;
@@ -97,7 +120,7 @@ int s3c24xx_spi_transfer(struct spi_device *dev, struct spi_message *msg)
         tr = list_entry(list, struct spi_transfer, list); 
         list = list->next;
         list_del(&tr->list);
-
+        
         init_completion(&info->done);
 
         info->cur_t = tr;
@@ -125,10 +148,17 @@ void s3c24xx_spi_irq(void *data)
 
     info = data;
     t = info->cur_t;
+    
+    if (!t)
+    {
+        printk("in fun: %s spi t is NULL\n", __func__);
+        return;
+    }
 
     if (t->tx_buf)
     {
         info->cur_cnt++;
+      
         if (info->cur_cnt < t->len)
             writeb(((unsigned char *)t->tx_buf)[info->cur_cnt], info->reg_base_phy + S3C2440_SPDATA);
         else
@@ -147,13 +177,13 @@ void s3c24xx_spi_irq(void *data)
 
 void s3c24xx_spi_controler_init(struct s3c24xx_spi_info *info)
 {
-#if 0
+#if 1
     GPFCON &= ~(3 << (1 * 2));
     GPFCON |=  (1 << (1 * 2));
     GPFDAT |=  (1 << 1);
 
     GPGCON &= ~((3 << (2 * 2)) | (3 << (4 * 2)) | (3 << (5 * 2)) | (3 << (6 * 2)) | (3 << (7 * 2)));
-    GPGCON |=  ((1 << (2 * 2)) | (1 << (4 * 2)) | (1 << (5 * 2)) | (1 << (6 * 2)) | (1 << (7 * 2)));
+    GPGCON |=  ((1 << (2 * 2)) | (1 << (4 * 2)) | (3 << (5 * 2)) | (3 << (6 * 2)) | (3 << (7 * 2)));
     GPGDAT |=  (1 << 2);
 #else
     /* GPF1 OLED_CSn output */

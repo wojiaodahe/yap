@@ -274,7 +274,7 @@ int test_user_syscall_printf(void *argc)
 {
 	while (1)
 	{
-		myprintf("Process Test Printf %d %x %c %s", 10, 0xaa, 'p', "test string\n");
+//		myprintf("Process Test Printf %d %x %c %s", 10, 0xaa, 'p', "test string\n");
 		ssleep(1);
 	}
 }
@@ -305,7 +305,7 @@ int test_completion(void *arg)
     while (1)
     {
         mod_timer(&test_completion_timer, 100);
-        printk("Test completion test_done.done %d\n", test_done.done);
+    //    printk("Test completion test_done.done %d\n", test_done.done);
         wait_for_completion(&test_done);
     }
 }

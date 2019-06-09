@@ -151,7 +151,7 @@ static int inet_accept(struct socket *sock, struct socket *newsock, int flags)
     newsock->data = isk;
     isk->socket   = newsock;
 
-    wait_event(&isk->wq, isk->status == ESTABLISHED);
+    wait_event_interruptible(&isk->wq, isk->status == ESTABLISHED);
     
     return isk->errno;
 }

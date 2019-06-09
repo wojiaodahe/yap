@@ -64,7 +64,7 @@ int process_dir(void)
 #endif
 			namlen = process_file(dirbuf->d_name);
 /* exclude sqlite3 */
-			if (namlen < 4000) {
+			if (namlen < 5000) {
 				printf("%-30s %d\n", dirbuf->d_name, namlen);
 				total += namlen;
 			}

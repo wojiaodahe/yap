@@ -22,6 +22,35 @@ static struct list_head active_queue;
 static struct list_head listen_queue;
 static struct list_head wait_queue;
 
+#if 0
+struct tcp_seg
+{
+    unsigned int send_seq;
+    unsigned short len;
+	unsigned short retries;
+	
+    unsigned int expected_ack;
+
+    struct i_socket *isk;
+	struct list_head list;
+	char data[1];
+};
+
+struct tcp_seg *alloc_tcp_seg(unsigned int len)
+{
+    struct tcp_seg *seg;
+
+    seg = kmalloc(sizeof (struct tcp_seg) + len);
+    if (!seg)
+        return NULL;
+
+    INIT_LIST_HEAD(&seg->list);
+    seg->retries = TCP_SEG_SEND_RETRIES;
+
+    return seg;
+}
+#endif
+
 struct tcp_seg *alloc_tcp_seg(unsigned int len)
 {
     struct tcp_seg *seg;

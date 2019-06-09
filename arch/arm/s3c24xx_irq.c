@@ -5,7 +5,7 @@
 #include "kmalloc.h"
 #include "s3c24xx_irqs.h"
 
-void enable_irq(void)
+inline void enable_irq(void)
 {
 	int r4;
 	__asm  
@@ -16,7 +16,7 @@ void enable_irq(void)
 	}
 }
 
-void disable_irq(void)
+inline void disable_irq(void)
 {
 	int r4;
 	__asm 
@@ -26,6 +26,42 @@ void disable_irq(void)
 		msr cpsr_cxsf, r4
 	}
 }
+
+inline unsigned long arch_local_irq_save(void)
+{
+    unsigned flags, r4;
+
+    __asm
+    {
+		mrs r4, cpsr
+        mov flags, r4
+		orr r4, r4, #0x80
+		msr cpsr_cxsf, r4
+    }
+
+    return flags;
+}
+
+inline unsigned long arch_local_save_flags(void)
+{
+	int cp;
+	
+    __asm 
+	{
+		mrs cp, cpsr
+	}
+
+    return cp;
+}
+
+inline void arch_local_restore(unsigned int flags)
+{
+	__asm 
+	{
+		msr cpsr_cxsf, flags
+	}
+}
+
 
 void umask_int(unsigned int offset)
 {
@@ -42,7 +78,7 @@ void common_irq_handler()
 	int bit;
     unsigned long oft = INTOFFSET;
 
-    SRCPND |= (1 << oft);
+    SRCPND = (1 << oft);
     INTPND |= (1 << oft);
 
 	//~{GeVP6O~}
