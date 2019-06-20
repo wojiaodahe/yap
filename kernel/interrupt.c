@@ -16,7 +16,7 @@ void kernel_disable_irq()
 {
     if (OSIntNesting > 0) /* 内核不支持中断嵌套, OSIntNesting = 1的时候表示已经处于中断当中, 这时中断是关闭的 */
         return;
-    
+        
     disable_irq();
 }
 

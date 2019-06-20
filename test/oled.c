@@ -111,7 +111,10 @@ int test_oled(void *arg)
     int fd;
     char buf[32];
 
-    fd = open("/dev/oled", 0, 0);
+    //while (1)
+     //   ssleep(100);
+
+    fd = sys_open("/dev/oled", 0, 0);
     if (fd < 0)
     {
         printk("can't open /dev/oled\n");

@@ -12,11 +12,11 @@ int deadlock(int sender, int dest)
 {
 	return 0;
 }
-
 void reset_msg(MESSAGE* p)
 {
 	memset(p, 0, sizeof(MESSAGE));
 }
+
 void block(pcb_t* p)
 {
     OS_Sched();
@@ -26,8 +26,6 @@ void unblock(pcb_t *p)
 {
 
 }
-
-
 
 int msg_send(pcb_t* current, int dest, MESSAGE* m)
 {

@@ -10,6 +10,7 @@
 #include "printk.h"
 #include "vfs.h"
 #include "inet.h"
+#include "completion.h"
 
 extern void pcb_list_add(pcb_t *head, pcb_t *pcb);
 extern pcb_t * pcb_list_init(void);
@@ -206,6 +207,162 @@ void OS_Sched()
     kernel_enable_irq();
 }
 
+void schedule(void)
+{
+    if (OSIntNesting > 0)
+        OS_IntSched(); 
+    else
+        OS_Sched();
+}
+
+void __wake_up(wait_queue_t *wq)
+{
+
+}
+
+void prepare_to_wait(wait_queue_t *wq, unsigned int state)
+{
+    wq->priv = current;
+    current->p_flags |= state;
+}
+
+void finish_wait(wait_queue_t *wq)
+{
+    pcb_t *pcb;
+
+    if (!wq || !wq->priv)
+        return;
+
+    pcb = wq->priv;
+    pcb->p_flags = PROCESS_READY;
+}
+
+void __wake_up_interruptible(wait_queue_t *wq)
+{
+
+    pcb_t *pcb;
+
+    if (!wq || !wq->priv)
+        return;
+
+    pcb = wq->priv;
+    pcb->p_flags = PROCESS_READY;
+}
+
+void __init_waitqueue_head(wait_queue_t *wq, char *name)
+{
+    spin_lock_init(&wq->lock);
+    INIT_LIST_HEAD(&wq->task_list);
+}
+
+
+void process_timeout(void *data)
+{
+    set_task_state(data, PROCESS_READY);
+}
+
+/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ *定时器在栈上,如果进程异常退出没有清掉定时器就会引发异常
+ *
+ * 只验证了 MAX_SCHEDULE_TIMEOUT 分支,未验证超时分支
+ */
+long schedule_timeout(long timeout, unsigned int state)
+{
+    unsigned long expire;
+    struct timer_list timer;
+
+    switch (timeout)
+    {
+    case MAX_SCHEDULE_TIMEOUT:
+        schedule();
+        return timeout < 0 ? 0 : timeout;
+    default:
+        break;
+    }
+    
+    expire = OS_TICKS + timeout;
+
+    timer.function = process_timeout;
+    timer.data = current;
+    timer.expires = timeout;
+
+    add_timer(&timer);
+    schedule();
+    del_timer(&timer);
+
+    timeout = expire - OS_TICKS;
+    
+    return timeout < 0 ? 0 : timeout;
+}
+
+long do_wait_for_common(struct completion *x, long timeout, unsigned int state)
+{
+    wait_queue_t wq;
+
+    if (!x->done)
+    {
+        init_waitqueue_head(&wq);
+        wq.priv = current;
+        list_add_tail(&wq.task_list, &x->wq.task_list);
+        
+        do
+        {
+            set_current_state(state);
+            spin_unlock_irq(&x->wq.lock);
+            timeout = schedule_timeout(timeout, state);
+            spin_lock_irq(&x->wq.lock);
+        } while (!x->done && timeout);
+
+        if (!x->done)
+            return timeout;
+    }
+
+    x->done--;
+    return timeout ?: 1;
+}
+
+long wait_for_common(struct completion *x, long timeout, int state)
+{
+    spin_lock_irq(&x->wq.lock);
+    
+    timeout = do_wait_for_common(x, timeout, state);
+    
+    spin_unlock_irq(&x->wq.lock);
+
+    return timeout; 
+}
+
+void wait_for_completion(struct completion *x)
+{
+    wait_for_common(x, MAX_SCHEDULE_TIMEOUT, PROCESS_WAIT);
+}
+
+void complete(struct completion *x)
+{
+    wait_queue_t *wq;
+    struct list_head *list;
+
+    spin_lock_irqsave(&x->wq.lock);  
+   
+    x->done++;
+   
+    if (!list_empty(&x->wq.task_list))
+    {
+        list = x->wq.task_list.next;
+        wq = list_entry(list, wait_queue_t, task_list);
+        list_del(list);
+
+        set_task_state(wq->priv, PROCESS_READY);
+    }
+    spin_unlock_irqrestore(&x->wq.lock);
+}
+
+void init_completion(struct completion *x)
+{
+    x->done = 0;
+    init_waitqueue_head(&x->wq);
+}
+
 int OS_SYS_PROCESS(void *p)
 {
 	int src;
@@ -291,13 +448,20 @@ void process_msleep(unsigned int m)
 	OS_Sched();
 }
 
-void set_task_status(unsigned int status)
+void set_task_state(void *task, unsigned int state)
 {
+    pcb_t *tsk = task;
+
 	enter_critical();
 
-	current->p_flags |= status;
+	tsk->p_flags = state;
 
 	exit_critical();
+}
+
+void set_current_state(unsigned int state)
+{
+    set_task_state(current, state);
 }
 
 void clr_task_status(unsigned int status)
@@ -569,3 +733,4 @@ pcb_t *pid2proc(int pid)
 
     return 0;
 }
+

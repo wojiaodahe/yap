@@ -30,14 +30,14 @@ void check_addr(void *addr)
     {
         disable_irq();
         while (1)
-            printk("Addr NULL! %s %d\n", __func__, __LINE__);
+            printk("Addr: %p Error! %s %d\n", addr, __func__, __LINE__);
     }
 
     if ((unsigned int)addr & 0xc0000000)
     {
         disable_irq();
         while (1)
-            printk("Addr NULL! %s %d\n", __func__, __LINE__);
+            printk("Addr %p Error! %s %d\n", addr, __func__, __LINE__);
     }
     
 }

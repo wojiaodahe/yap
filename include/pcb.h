@@ -43,9 +43,9 @@ typedef struct pcb
 
     unsigned int preempt_count;
 
-	unsigned int process_mem_size;
-	unsigned int phyaddr;
-	unsigned int viraddr;
+	unsigned long process_mem_size;
+	unsigned long phyaddr;
+	unsigned long viraddr;
 
 	unsigned int authority;//进程权限（内核进程、用户进程）
 

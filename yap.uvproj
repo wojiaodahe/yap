@@ -493,16 +493,6 @@
               <FilePath>.\proc\proc.c</FilePath>
             </File>
             <File>
-              <FileName>wait.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\proc\wait.c</FilePath>
-            </File>
-            <File>
-              <FileName>complete.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\proc\complete.c</FilePath>
-            </File>
-            <File>
               <FileName>spinlock.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\proc\spinlock.c</FilePath>
@@ -1281,16 +1271,6 @@
               <FileName>proc.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\proc\proc.c</FilePath>
-            </File>
-            <File>
-              <FileName>wait.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\proc\wait.c</FilePath>
-            </File>
-            <File>
-              <FileName>complete.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\proc\complete.c</FilePath>
             </File>
             <File>
               <FileName>spinlock.c</FileName>

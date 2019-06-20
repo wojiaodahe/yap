@@ -85,7 +85,7 @@ int test_tcp(void *p)
 	
     seraddr.sin_family = AF_INET;
 	seraddr.sin_port = htons(8000);
-	seraddr.sin_addr.addr = htonl(0x01020302);
+	seraddr.sin_addr.addr = htonl(0xc0A80105);
 
     fd = sys_socket(AF_INET, SOCK_STREAM, 0);
 
@@ -292,7 +292,7 @@ void test_completion_func(void *x)
 }
 
 struct completion test_done;
-static struct timer_list test_completion_timer = 
+struct timer_list test_completion_timer = 
 {
     .expires = 100,
     .data = &test_done,
@@ -301,11 +301,14 @@ static struct timer_list test_completion_timer =
 
 int test_completion(void *arg)
 {
+    init_completion(&test_done);
     add_timer(&test_completion_timer);
+    printk("&test_completion_timer: %x\n", &test_completion_timer);
+    printk("&test_done: %x\n", &test_done);
     while (1)
     {
         mod_timer(&test_completion_timer, 100);
-    //    printk("Test completion test_done.done %d\n", test_done.done);
+        printk("Test completion test_done.done %d\n", test_done.done);
         wait_for_completion(&test_done);
     }
 }

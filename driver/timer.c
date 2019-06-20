@@ -10,8 +10,10 @@ int add_timer(struct timer_list *timer)
 
 	if (!timer)
 		return -EINVAL;
-
-	list_for_each(list, &timer_list_head)
+    
+    enter_critical();
+    
+    list_for_each(list, &timer_list_head)
 	{
 		tmp = list_entry(list, struct timer_list, list);
 
@@ -20,6 +22,8 @@ int add_timer(struct timer_list *timer)
 	}
 
 	list_add_tail(&timer->list, &timer_list_head);
+   
+    exit_critical();
 
 	return 0;
 }

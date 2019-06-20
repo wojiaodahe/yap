@@ -732,7 +732,7 @@ void complete_establish(struct i_socket *isk)
     isk->max_ack_backlog = 3;
 
     //printk("Complete An Establish\n");
-    wake_up(&isk->wq);
+    wake_up_interruptible(&isk->wq);
 }
 
 unsigned short tcp_get_data_lenght(struct sk_buff *skb)
@@ -817,7 +817,7 @@ int tcp_seg_sort(struct i_socket *isk, struct sk_buff *skb)
 
     /* 唤醒上层等待数据的进程  */
     if (isk->recv_data_len)
-        wake_up(&isk->wq);
+        wake_up_interruptible(&isk->wq);
    
     /* 假设握手完成后的数据阶段序列号从1开始,某时刻收到了序列号为4的包
      * 此时tcp接收队列可能分为以下几种情况

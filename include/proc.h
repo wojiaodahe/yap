@@ -23,5 +23,11 @@ extern void process_sleep(unsigned int sec);
 extern void process_msleep(unsigned int m);
 extern void panic(void);
 
+
+#define MAX_SCHEDULE_TIMEOUT 0xfffffff
+
+void set_current_state(unsigned int state);
+void set_task_state(void *task, unsigned int state);
+
 #endif
 

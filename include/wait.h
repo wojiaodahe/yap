@@ -17,39 +17,17 @@ struct __wait_queue
     struct list_head task_list;
 };
 
-#if 0
-#define __wait_event(wq, condition)\
+#define wait_event(wq, condition)\
     do {\
         while (1)\
         {\
-            prepare_to_wait(wq, PROCESS_WAIT);\
             if ((condition))\
             {\
                 break;\
             }\
             OS_Sched();\
         }\
-        finish_wait(wq);\
     }while (0)
-
-#define wait_event(wq, condition)\
-    if (!condition)\
-        __wait_event(wq, condition)
-
-#else
-#define wait_event(wq, condition)\
-    do {\
-        while (1)\
-        {\
-            if ((condition))\
-            {\
-                break;\
-            }\
-            do_wait(wq);\
-        }\
-    }while (0)
-
-#endif
 
 #define __wait_event_interruptible(wq, condition)\
     do {\
