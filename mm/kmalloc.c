@@ -2,6 +2,7 @@
 #include "common.h"
 #include "syslib.h"
 #include "printk.h"
+#include "assert.h"
 //#include "head.h"
 
 //#include "list.h"
