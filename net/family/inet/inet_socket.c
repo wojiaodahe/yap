@@ -5,6 +5,8 @@
 #include "inet_socket.h"
 #include "tcp.h"
 #include "udp.h"
+#include "lib.h"
+#include "printk.h"
 #include "kmalloc.h"
 
 static struct i_proto_opt *inet_protos[MAX_INET_PROTO];
@@ -54,7 +56,7 @@ void free_isock(struct i_socket *isk)
     kfree(isk);
 }
 
-struct i_prot_opt *inet_get_opt(short int type)
+struct i_proto_opt *inet_get_opt(short int type)
 {
     int i; 
 
@@ -69,7 +71,6 @@ struct i_prot_opt *inet_get_opt(short int type)
 
 static int inet_socket(struct socket *sock, int protocol)
 {
-    int i;
 	struct i_socket   *isk;
     struct i_proto_opt *opt;
 
@@ -136,8 +137,9 @@ static int inet_connect(struct socket *sock, struct sockaddr *uservaddr, int add
 	return isk->i_prot_opt->connect(isk, (struct sockaddr_in *)uservaddr, addrlen);
 }
 
-static int inet_accept(struct socket *sock, struct socket *newsock, int flags)
+static int inet_accept(struct socket *sock, struct socket *newsock, int *addrlen)
 {
+    int flags = 0x0;
 	struct i_socket *isk;
 
 	if (!sock || !sock->data)
