@@ -27,3 +27,6 @@ tags
 *.ini
 output
 listing
+GPATH
+GRTAGS
+GTAGS
