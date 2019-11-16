@@ -3,6 +3,15 @@
 
 #include "spinlock_types.h"
 
+extern void raw_spin_lock(raw_spinlock_t *lock);
+extern void raw_spin_unlock(raw_spinlock_t *lock);
+extern void raw_spin_lock_init(raw_spinlock_t *lock);
+extern void raw_spin_unlock(raw_spinlock_t *lock);
+extern void raw_spin_lock_irq(raw_spinlock_t *lock);
+extern void raw_spin_unlock_irq(raw_spinlock_t *lock);
+extern void raw_spin_lock_init(raw_spinlock_t *lock);
+
+
 #define spinlock_check(_lock)
 
 #define spin_lock_init(_lock)                   \
@@ -23,10 +32,6 @@
 #define spin_unlock_irqrestore(lock)
 
 #define spin_acquire()
-
-extern void raw_spin_lock(raw_spinlock_t *lock);
-extern void raw_spin_unlock(raw_spinlock_t *lock);
-extern void raw_spin_lock_init(raw_spinlock_t *lock);
 
 #endif
 

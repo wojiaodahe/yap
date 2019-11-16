@@ -1,10 +1,11 @@
 #include "common.h"
 #include "syscall.h"
-#include "head.h"
 #include "kernel.h"
 #include "error.h"
 #include "printk.h"
 #include "vfs.h"
+#include "lib.h"
+#include "pcb.h"
 #include "proc.h"
 
 
@@ -36,7 +37,8 @@ int system_call_sendrec(int argc, int *argv)
 	if (argv[0] != OS_SEND_RECV)
 		return -EINVAL;
 
-	return sys_sendrec(argv[1], argv[2], (MESSAGE *)argv[3], current);
+	//return sys_sendrec(argv[1], argv[2], (MESSAGE *)argv[3], current);
+    return 0;
 }
 
 int system_call_open(int argc, int *argv)
@@ -141,11 +143,15 @@ int sys_call_schedule(int swi_num, int argc, int *argv)
 
 unsigned int OS_Get_Ticks()
 {
+#if 0
    	MESSAGE msg;
 	reset_msg(&msg);
 	msg.type = GET_TICKS;
 	send_recv(BOTH, OS_SYS_PROCESS_PID, &msg);
 	return msg.RETVAL;
+#endif
+
+    return 0;
 }
 
 void milli_delay(int sec)

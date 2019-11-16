@@ -16,6 +16,7 @@ typedef unsigned int permission_t;
 #endif
 
 extern int set_mem_access_permission(unsigned long, unsigned long, permission_t, permission_t);
+extern int system_mm_init(void);
 
 #endif
 

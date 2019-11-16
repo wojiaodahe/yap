@@ -38,6 +38,7 @@ struct udp_pseudo_hdr
 extern int udp_process(struct sk_buff *skb);
 extern struct udp *alloc_udp(struct i_socket *isk);
 extern void free_udp(struct udp *udp);
-void udp_new_sock(struct i_socket *isk);
+extern void udp_new_sock(struct i_socket *isk);;
+extern int udp_init(void);
 
 #endif /* INCLUDE_UDP_H_ */

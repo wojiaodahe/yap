@@ -1,6 +1,9 @@
 #include "s3c24xx.h"
 #include "system.h"
 #include "config.h"
+#include "proc.h"
+#include "common.h"
+#include "interrupt.h"
 #include "s3c24xx_irqs.h"
 
 extern void enable_irq(void);
@@ -300,10 +303,10 @@ void init_clock(void)
 
 void s3c24xx_timer4_irq_handler(void *prv)
 {
-    OS_Clock_Tick();
+    OS_Clock_Tick(NULL);
 }
 
-int timer_init(void)
+int s3c24xx_timer_init(void)
 {
 	TCFG0 |= (100 << 8);
     TCFG1 |= (2 << 16);

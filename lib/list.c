@@ -1,4 +1,5 @@
 #include "list.h"
+#include "assert.h"
 
 void INIT_LIST_HEAD(struct list_head *list)
 {

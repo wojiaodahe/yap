@@ -85,6 +85,10 @@ struct net_device
 
 extern int register_netdev(struct net_device *dev);
 extern void net_device_core_init(void);
+extern void netif_wake_queue(struct net_device *ndev);
+extern int netif_tx_queue(struct net_device *ndev, struct sk_buff *skb);
+extern void netif_stop_queue(struct net_device *ndev);
+extern void netif_rx(struct sk_buff *skb);
 
 #endif /* INCLUDE_NETDEVICE_H_ */
 

@@ -59,6 +59,9 @@ struct __wait_queue
         __init_waitqueue_head((q), #q);\
     } while (0)
 
+extern void prepare_to_wait(wait_queue_t *wq, unsigned int state);
+extern void finish_wait(wait_queue_t *wq);
+extern void __wake_up_interruptible(wait_queue_t *wq);
 extern void __init_waitqueue_head(wait_queue_t *wq, char *name);
 extern void __wake_up(wait_queue_t *wq);
 

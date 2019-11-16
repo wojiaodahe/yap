@@ -1,3 +1,4 @@
+#include "lib.h"
 
 void memset(void *src, unsigned char num, unsigned int len)
 {

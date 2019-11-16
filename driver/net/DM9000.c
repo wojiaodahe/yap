@@ -8,6 +8,7 @@
 #include "syslib.h"
 #include "interrupt.h"
 
+void dm9000_tx_done(struct net_device *ndev);
 
 #define DM_ADD (*((volatile unsigned short *) 0x20000300))
 #define DM_CMD (*((volatile unsigned short *) 0x20000304))
@@ -20,9 +21,9 @@
 #define DM9KS_PID_H	0x2B
 
 
-void udelay(U32 t)
+void udelay(unsigned int t)
 {
-	U32 i;
+	unsigned int i;
 	for(;t>0;t--)
 	{
 		for(i=0;i<100;i++){}
@@ -30,20 +31,20 @@ void udelay(U32 t)
 }
 void Test_DM9000AE()
 {
-	U32 id_val;
+	unsigned int id_val;
 
 	BWSCON = (BWSCON & ~(0x03 << 16)) | (0x01 << 16);
 	BANKCON4 = (1 << 13) | (2 << 11) | (7 << 8) | (2 << 6) | (1 << 4) | (1 << 2) | 0;
 
 	id_val = 0;
 	DM_ADD = DM9KS_VID_L;
-	id_val = (U8)DM_CMD;
+	id_val = (unsigned char)DM_CMD;
 	DM_ADD = DM9KS_VID_H;
-	id_val |= (U8)DM_CMD<<8;
+	id_val |= (unsigned char)DM_CMD<<8;
 	DM_ADD = DM9KS_PID_L;udelay(2);
-	id_val |= (U8)DM_CMD<<16;
+	id_val |= (unsigned char)DM_CMD<<16;
 	DM_ADD = DM9KS_PID_H;udelay(2);
-	id_val |= (U8)DM_CMD<<24;
+	id_val |= (unsigned char)DM_CMD<<24;
 	printk("DM9000AE ChipId is %x\r\n", id_val);
 	if(id_val == DM9KS_ID)
 	{
@@ -57,7 +58,7 @@ void Test_DM9000AE()
 }
 
 //向DM9000寄存器写数据
-void dm9000_reg_write(U16 reg, U16 data)
+void dm9000_reg_write(unsigned short reg, unsigned short data)
 {  
 	udelay(20);		//之前定义的微妙级延时函数，这里延时20us
 	DM_ADD = reg;	//将寄存器地址写到INDEX端口
@@ -67,7 +68,7 @@ void dm9000_reg_write(U16 reg, U16 data)
 }
 
 //从DM9000寄存器读数据
-unsigned short dm9000_reg_read(U16 reg)
+unsigned short dm9000_reg_read(unsigned short reg)
 {
 	udelay(20);
 	DM_ADD = reg;
@@ -75,7 +76,7 @@ unsigned short dm9000_reg_read(U16 reg)
 	return DM_CMD;//将数据从寄存器中读出	
 }
 //向DM9000PHY寄存器写数据
-void dm9000_reg_writePHY(U16 reg, U16 data)
+void dm9000_reg_writePHY(unsigned short reg, unsigned short data)
 {
 	//寄存器地址写到EPAR/PHY_AR（0CH）寄存器中,
 	//注意将寄存器地址的第6位置1（地址与0x40或运算即可），
@@ -92,9 +93,9 @@ void dm9000_reg_writePHY(U16 reg, U16 data)
 	dm9000_reg_write(DM9000_EPCR, 0x08);
 }
 //从DM9000PHY寄存器读数据
-U16 dm9000_reg_readPHY(U16 reg)
+unsigned short dm9000_reg_readPHY(unsigned short reg)
 {
-	U16 data;
+	unsigned short data;
 	//寄存器地址写到EPAR/PHY_AR（0CH）寄存器中,
 	//注意将寄存器地址的第6位置1（地址与0x40或运算即可），
 	///以表明写的是PHY地址，而不是EEPROM地址
@@ -113,9 +114,8 @@ U16 dm9000_reg_readPHY(U16 reg)
 
 static void int_issue(void *priv)
 {
-	U32 len;
-    U8 status; 
-    struct sk_buff *skb;
+	unsigned int len;
+    unsigned char status; 
 
     status = dm9000_reg_read(DM9000_ISR);
     dm9000_reg_write(DM9000_ISR, status);	//清除接收中断标志位
@@ -138,7 +138,7 @@ static void int_issue(void *priv)
 int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev);
 struct net_device dm9000_dev =
 {
-	.ip 			 = 0xc0a80105,
+	.ip 			 = 0xc0a8080a,
 	.netmask		 = 0xffffff00,
 	.gw  			 = 0x01020301,
 	.mtu			 = 1514,
@@ -161,7 +161,7 @@ void IOSetInit(void)
 
 void DM9000_init(char *mac_addr)
 {
-	U32 i;
+	unsigned int i;
 	Test_DM9000AE();
 	IOSetInit();
 	//初始化设置步骤: 0
@@ -232,9 +232,9 @@ void dm9000_tx_done(struct net_device *ndev)
 
 int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev)
 {
-	U32 len,i;
-	U8 tmp;
-	U8 *datas;
+	unsigned int len,i;
+	unsigned char tmp;
+    char *datas;
 
 	datas = skb->data_buf;
 	len = skb->data_len;							//把发送长度写入
@@ -274,13 +274,13 @@ int DM9000_sendPcket(struct sk_buff *skb, struct net_device *ndev)
 	return 0;
 }
 
-U32 receivepacket(void *priv)
+unsigned int receivepacket(void *priv)
 {
     struct sk_buff *skb;
     char *data;
-	U16 i, tmp, status, len;
+	unsigned short i, tmp, status, len;
     unsigned char GoodPacket;
-	U8 ready;
+	unsigned char ready;
 	ready = 0;								//希望读取到"01H"
 	status = 0;								//数据包状态
 	len = 0; 								//数据包长度
@@ -325,7 +325,7 @@ U32 receivepacket(void *priv)
             return len;
         }
 
-        if( (len <= 1522))//!(status & 0xbf) &&
+        if((len <= 1522) && GoodPacket)//!(status & 0xbf) &&
         {
             skb = alloc_skbuff(len);
             if (!skb)
@@ -366,7 +366,7 @@ U32 receivepacket(void *priv)
 
 void printkDM9000Reg(void)
 {
-	/*	U16 data,i;
+	/*	unsigned short data,i;
 		for(i=0x0;i<0x10;i++)
 		{
 		data = dm9000_reg_read(i);
@@ -408,21 +408,21 @@ void printkDM9000Reg(void)
 		printk("RET_0x%2x = %x\r\n",i,data);
 
 		data = dm9000_reg_read(0xfe);
-		printk("处理器IO模式:%x\r\n",((U8)data)>>6);
+		printk("处理器IO模式:%x\r\n",((unsigned char)data)>>6);
 
 		data = dm9000_reg_read(0x01);
-		if(((U8)data)>>1)
+		if(((unsigned char)data)>>1)
 		printk("10M以太网\r\n");
 		else
 		printk("100M以太网\r\n");
 
 		data = dm9000_reg_read(0x02);
-		printk("TCR（02H）：发送控制寄存器:%x\r\n",((U8)data));
+		printk("TCR（02H）：发送控制寄存器:%x\r\n",((unsigned char)data));
 
 		TestDm9000();
 		*/
-	U8 val, i;
-	U16 data;
+	unsigned char val, i;
+	unsigned short data;
 	printk("Registers:\n");
 	val = dm9000_reg_read(DM9000_NCR);
 	printk("NCR = %02x(%03d)   ", val, val);
@@ -529,7 +529,7 @@ void TestDm9000(void)
 
 void testNetwork(void)
 {
-	U8 dat;
+	unsigned char dat;
 	while(1)
 	{
 		dat =  dm9000_reg_read(DM9000_NSR);

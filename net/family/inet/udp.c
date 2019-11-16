@@ -151,7 +151,7 @@ int udp_sendto(struct i_socket *isk, char *buf, int len, int noblock,
 }
 
 int udp_recvfrom(struct i_socket *isk, char *ubuf, int len, int noblock,
-		      unsigned int flags, struct sockaddr *sin, int *addrlen)
+		      unsigned int flags, struct sockaddr_in *sin, int *addrlen)
 {
 	int len_remain = len;
 	struct sk_buff *tmp;
@@ -228,9 +228,9 @@ int  udp_bind(struct i_socket *isk, struct sockaddr_in *usin, int addrlen)
 
 void print_udp(struct sk_buff *skb)
 {
-    int i;
+    //int i;
     struct udphdr *udph;
-    char *data;
+    //char *data;
 
     udph = (struct udphdr *)(skb->data_buf + OFFSET_UDPHDR);
 
@@ -261,7 +261,7 @@ struct i_proto_opt udp_opt[] =
 	NULL,
 	udp_sendto,
 	udp_recvfrom,
-    NULL,
+	NULL,
 	udp_bind,
 	NULL,
 	NULL,

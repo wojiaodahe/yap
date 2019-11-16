@@ -1,7 +1,6 @@
 #include "platform.h"
 #include "s3c24xx.h"
 #include "fs.h"
-#include "head.h"
 
 struct resource 	led_resource0[2];
 struct platform_device led_dev0;

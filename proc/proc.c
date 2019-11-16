@@ -1,15 +1,17 @@
-#include "head.h"
+#include "mm.h"
+#include "arch.h"
 #include "kernel.h"
 #include "interrupt.h"
 #include "error.h"
 #include "config.h"
+#include "pcb.h"
 #include "proc.h"
 #include "wait.h"
 #include "timer.h"
 #include "syslib.h"
 #include "printk.h"
 #include "vfs.h"
-#include "inet.h"
+#include "syscall.h"
 #include "completion.h"
 
 extern void pcb_list_add(pcb_t *head, pcb_t *pcb);
@@ -365,6 +367,7 @@ void init_completion(struct completion *x)
 
 int OS_SYS_PROCESS(void *p)
 {
+#if 0
 	int src;
 	while (1)
     {
@@ -386,6 +389,11 @@ int OS_SYS_PROCESS(void *p)
         }
 	}
 	//return 0;
+    //
+#else
+    while (1)
+        ssleep(100);
+#endif
 }
 
 int OS_IDLE_PROCESS(void *arg)
@@ -642,7 +650,7 @@ int OS_INIT_PROCESS(void *argv)
 		OS_Sched();
 	}
     
-    return 0;
+    //return 0;
 }
 
 int OS_Init(void)

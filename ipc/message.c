@@ -1,9 +1,11 @@
 #include "message.h"
+#include "lib.h"
 #include "pcb.h"
 #include "assert.h"
-#include "head.h"
 
 extern pcb_t *pid2proc(int);
+extern int proc2pid(pcb_t *proc);
+extern int sendrec(int type, int src_dest, MESSAGE *msg);
 
 #define phys_copy memcpy
 #define va2la(pid, va) (va)

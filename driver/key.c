@@ -1,11 +1,13 @@
 #include "s3c24xx.h"
 #include "s3c24xx.h"
 #include "fs.h"
-#include "head.h"
 #include "wait.h"
 #include "interrupt.h"
+#include "printk.h"
 #include "kernel.h"
 #include "chr.h"
+
+extern int test_led(void);
 
 static char keyflag = 0;
 wait_queue_t wq;

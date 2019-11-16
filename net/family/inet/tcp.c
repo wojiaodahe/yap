@@ -1,7 +1,6 @@
 #include "inet_socket.h"
 #include "error.h"
 #include "fs.h"
-#include "head.h"
 #include "list.h"
 #include "socket.h"
 #include "wait.h"

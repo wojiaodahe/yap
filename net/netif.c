@@ -9,6 +9,9 @@
 #include "syslib.h"
 #include "wait.h"
 #include "bitops.h"
+#include "assert.h"
+#include "proc.h"
+#include "interrupt.h"
 
 static wait_queue_t rx_wq;
 static struct list_head netif_rx_queue;
