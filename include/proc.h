@@ -22,6 +22,7 @@ extern void OS_Sched(void);
 extern void process_sleep(unsigned int sec);
 extern void process_msleep(unsigned int m);
 extern void panic(void);
+extern unsigned int OS_Get_Kernel_Ticks(void);
 
 
 #define MAX_SCHEDULE_TIMEOUT 0xfffffff

@@ -1,3 +1,4 @@
+#include "arch.h"
 #include "kernel.h"
 #include "error.h"
 #include "interrupt.h"
