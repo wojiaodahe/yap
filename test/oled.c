@@ -20,9 +20,8 @@
 
 void OLEDPutChar(int fd, int page, int col, char c)
 {
-    int i = 0;
     /* 得到字模 */
-    const unsigned char *dots = oled_asc2_8x16[c - ' '];
+    char *dots = oled_asc2_8x16[c - ' '];
 
     /* 发给OLED */
     //OLEDSetPos(page, col);
@@ -84,10 +83,8 @@ void print_usage(char *cmd)
 
 int test_oled1(void *arg)
 {
-    int i = 0;
     int fd;
-    char buf[32];
-
+    
     fd = open("/dev/oled", 0, 0);
     if (fd < 0)
     {
@@ -100,7 +97,7 @@ int test_oled1(void *arg)
 //        OLEDPrint(fd, 4, 0, "1234567890");
         msleep(100);
     }
-    return 0;
+//    return 0;
 }
 
 
@@ -130,7 +127,8 @@ int test_oled(void *arg)
         OLEDPrint(fd, 2, 0, buf);
         OLEDPrint(fd, 0, 0, "hello world");
     }
-    return 0;
+    
+    //return 0;
 }
 
 
