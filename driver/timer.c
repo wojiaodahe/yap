@@ -1,6 +1,7 @@
 #include "list.h"
 #include "timer.h"
 #include "error.h"
+#include "interrupt.h"
 
 static struct list_head timer_list_head;
 int add_timer(struct timer_list *timer)
