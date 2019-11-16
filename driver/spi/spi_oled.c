@@ -1,6 +1,7 @@
 #include "spi.h"
 #include "fs.h"
 #include "chr.h"
+#include "lib.h"
 #include "kmalloc.h"
 #include "s3c24xx.h"
 #include "error.h"

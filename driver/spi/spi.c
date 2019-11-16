@@ -118,7 +118,7 @@ void spidev_release(struct device *dev)
 struct spi_device *spi_alloc_device(struct spi_master *master)
 {
     struct spi_device *spi;
-    struct device *dev = master->dev.parent;
+//    struct device *dev = master->dev.parent;
 
 //    if (!spi_master_get(master))
 //       return NULL;
@@ -249,7 +249,7 @@ int spi_async(struct spi_device *spi, struct spi_message *message)
 {
 	int ret = 0;
 	struct spi_master *master = spi->master;
-	unsigned long flags;
+//	unsigned long flags;
 
 //	spin_lock_irqsave(&master->bus_lock_spinlock, flags);
 
@@ -266,8 +266,8 @@ int spi_async(struct spi_device *spi, struct spi_message *message)
 int spi_async_locked(struct spi_device *spi, struct spi_message *message)
 {
 	int ret = 0;
-	struct spi_master *master = spi->master;
-	unsigned long flags;
+//	struct spi_master *master = spi->master;
+//	unsigned long flags;
 
 	//spin_lock_irqsave(&master->bus_lock_spinlock, flags);
 
