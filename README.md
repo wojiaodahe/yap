@@ -32,5 +32,3 @@
 ## 开发环境及工具
 ### 软件环境: windows 10 & keil 4.72 & jlink driver
 ### 硬件环境: x86_64 PC & TQ2440开发板 & jz2440开发板 & jlink debuger
-
-
