@@ -1,12 +1,15 @@
-#include "head.h"
 #include "fs.h"
 #include "syscall.h"
 #include "vfs.h"
+#include "kmalloc.h"
+#include "lib.h"
+#include "printk.h"
 
 #include "unistd.h"
 #include "fcntl.h"
 #include "wait.h"
 #include "socket.h"
+#include "inet.h"
 #include "inet_socket.h"
 #include "timer.h"
 #include "completion.h"
@@ -39,45 +42,11 @@ int test_wait_queue(void *p)
 	}
 }
 
-int test_socket(void *p)
-{
-    int i;
-    int ret = 0;
-    int fd;
-    char buff[16];
-    struct sockaddr_in seraddr;
-	
-    seraddr.sin_family = AF_INET;
-	seraddr.sin_port = htons(8000);
-	seraddr.sin_addr.addr = htonl(0xc0a80168);
-    test_tcp();
-
-    strcpy(buff, "helloworld");
-    fd = sys_socket(AF_INET, SOCK_DGRAM, 0);
-	while (1)
-	{
-      //  ret = sys_sendto(fd, buff, 20, 0, (struct sockaddr *)&seraddr, sizeof(seraddr));
-      //  if (ret < 0)
-     //       printk("sys_sendto failed: %d\n", ret);
-       
-        ret =  sys_recvfrom(fd, buff, 10, 0, (struct sockaddr *)&seraddr, sizeof (seraddr));
-        printk("sys_recvfrom ret: %d\n", ret);
-
-        for (i = 0; i < ret; i++)
-            printk("%c", buff[i]);
-        printk("\n");
-		
-        //ssleep(1);
-	}
-}
-
 #define BUFF_SIZE   8192
 int test_tcp(void *p)
 {
-    int i;
     int ret = 0;
     int fd, new_fd;
-    unsigned int *ptr;
     char *buff;
     struct sockaddr_in seraddr;
     struct sockaddr_in cliaddr;
@@ -85,7 +54,7 @@ int test_tcp(void *p)
 	
     seraddr.sin_family = AF_INET;
 	seraddr.sin_port = htons(8000);
-	seraddr.sin_addr.addr = htonl(0xc0A80105);
+	seraddr.sin_addr.addr = htonl(0xc0a8080a);
 
     fd = sys_socket(AF_INET, SOCK_STREAM, 0);
 
@@ -97,7 +66,7 @@ int test_tcp(void *p)
     if (ret < 0)
         printk("sys_listen faild\n");
 
-    new_fd = sys_accept(fd, &cliaddr, &addrlen);
+    new_fd = sys_accept(fd, (struct sockaddr *)&cliaddr, &addrlen);
     
     buff = kmalloc(BUFF_SIZE);
     if (!buff)
@@ -108,6 +77,7 @@ int test_tcp(void *p)
     }
 
 #if 0
+    int i;
     while (1)
     {
         strcpy(buff, "hello world && hello tcp");
@@ -121,30 +91,69 @@ int test_tcp(void *p)
             printk("%c", buff[i]);
     }
 #else
+    
     while (1)
     {
         memset(buff, 0, BUFF_SIZE);
         ret = sys_recv(new_fd, buff, BUFF_SIZE, 0);
-        printk("sys_recv: %d\n", ret);
+        //printk("sys_recv: %d\n", ret);
 # if 0
+        unsigned int *ptr;
         ptr = (unsigned int *)buff;
         for (i = 0; i < ret / 4; i++)
             printk("%d \n", *ptr++);
 #endif
     }
 #endif
+
+#if 0
 	while (1)
 	{
         ssleep(100);
 	}
+#endif
+
 }
+
+int test_socket(void *p)
+{
+    int i;
+    int ret = 0;
+    int fd;
+    char buff[16];
+    struct sockaddr_in seraddr;
+    int addr_len;
+	
+    seraddr.sin_family = AF_INET;
+	seraddr.sin_port = htons(8000);
+	seraddr.sin_addr.addr = htonl(0xc0a80168);
+    test_tcp((void *)0);
+
+    strcpy(buff, "helloworld");
+    fd = sys_socket(AF_INET, SOCK_DGRAM, 0);
+	while (1)
+	{
+      //  ret = sys_sendto(fd, buff, 20, 0, (struct sockaddr *)&seraddr, sizeof(seraddr));
+      //  if (ret < 0)
+     //       printk("sys_sendto failed: %d\n", ret);
+       
+        ret =  sys_recvfrom(fd, buff, 10, 0, (struct sockaddr *)&seraddr, &addr_len);
+        printk("sys_recvfrom ret: %d\n", ret);
+
+        for (i = 0; i < ret; i++)
+            printk("%c", buff[i]);
+        printk("\n");
+		
+        //ssleep(1);
+	}
+}
+
 
 void test_connect(void)
 {
     int ret;
 	int sockfd;
-	struct sockaddr_in seraddr,
-					   cltaddr;
+	struct sockaddr_in seraddr;
 	
 	if ((sockfd = sys_socket(AF_INET, SOCK_STREAM, 0)) < 0)
         printk("sys_socket failed ret: %d\n");
@@ -308,7 +317,7 @@ int test_completion(void *arg)
     while (1)
     {
         mod_timer(&test_completion_timer, 100);
-        printk("Test completion test_done.done %d\n", test_done.done);
+//        printk("Test completion test_done.done %d\n", test_done.done);
         wait_for_completion(&test_done);
     }
 }

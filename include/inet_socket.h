@@ -90,7 +90,7 @@ struct i_proto_opt
 					unsigned int flags, struct sockaddr_in *usin, int *addr_len);
 	int	 (*connect)(struct i_socket *isk, struct sockaddr_in *usin, int addr_len);
 	int  (*bind)(struct i_socket *isk, struct sockaddr_in *usin, int addrlen);
-	int  (*accept)(struct i_socket *isk, int flags);
+	struct i_socket *(*accept)(struct i_socket *isk, int flags);
 	int  (*listen)(struct i_socket *isk, int backlog);
 	int	 (*send)(struct i_socket *isk, char *to, int len, int nonblock, unsigned flags);
 	int	 (*recv)(struct i_socket *isk, char *to, int len, int nonblock, unsigned flags);
@@ -125,6 +125,7 @@ struct i_proto_opt
 extern struct i_socket *alloc_isocket(void);
 extern void release_sock(struct i_socket *isk);
 extern int inet_register_proto(struct i_proto_opt *opt);
+extern void free_isock(struct i_socket *isk);
 
 #endif
 

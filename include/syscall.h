@@ -22,6 +22,8 @@ struct system_call_tag
 extern void ssleep(unsigned int time);
 extern void msleep(unsigned int time);
 extern int myprintf(char *fmt, ...);
+extern unsigned int OS_Get_Ticks(void);
+extern int syscall(int argc, unsigned long *argv);
 
 
 #endif 

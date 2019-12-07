@@ -107,6 +107,7 @@ extern void spi_master_set_devdata(struct spi_master *master, void *data);
 extern void *spi_master_get_devdata(struct spi_master *master);
 extern int spi_register_driver(struct spi_driver *spi_drv);
 extern void spi_unregister_driver(struct spi_driver *spi_drv);
+extern int spi_register_board_info(struct spi_board_info *info, unsigned int n);
 
 
 extern int spi_sync(struct spi_device *spi, struct spi_message *message);

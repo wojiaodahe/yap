@@ -1,3 +1,4 @@
+#include "arch.h"
 #include "machine.h"
 #include "common.h"
 
@@ -11,5 +12,5 @@ void setup_machine_desc(struct machine_desc *md)
 
 void sys_timer_init(void)
 {
-    timer_init();
+    s3c24xx_timer_init();
 }

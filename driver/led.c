@@ -1,8 +1,8 @@
 #include "s3c24xx.h"
 #include "fs.h"
-#include "head.h"
 #include "syscall.h"
 #include "chr.h"
+#include "printk.h"
 
 /*
  * leds.c: —≠ª∑µ„¡¡4∏ˆLED

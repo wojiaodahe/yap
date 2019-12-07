@@ -1,6 +1,5 @@
 #include "s3c24xx.h"
 #include "platform.h"
-#include "head.h"
 #include "fs.h"
 #include "error.h"
 #include "chr.h"

@@ -3,7 +3,8 @@
 #include "blk.h"
 #include "ramfs.h"
 #include "common.h"
-#include "head.h"
+#include "lib.h"
+#include "printk.h"
 
 #define RAMDISK_SIZE    (1024 *1024 *2)
 #define RAMDISK_DEV_NUM     1

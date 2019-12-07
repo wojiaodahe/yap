@@ -99,11 +99,11 @@ struct device *next_device()
  */
 int device_for_each_child(struct device *parent, void *data, int (*fn)(struct device *dev, void *data))
 {
-    int error = 0;
-    struct device *child;
 
     return 0;
-
+#if 0
+    int error = 0;
+    struct device *child;
     while (!error)
     {
        child = next_device();
@@ -113,6 +113,7 @@ int device_for_each_child(struct device *parent, void *data, int (*fn)(struct de
     }
 
     return error;
+#endif
 }
 
 void device_initialize(struct device *dev)

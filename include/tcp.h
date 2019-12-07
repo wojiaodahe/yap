@@ -132,4 +132,5 @@ struct tcphdr
 #define TCP_SEG_TIMEOUT_FLAG    (1 << 0)
 
 extern int tcp_process(struct sk_buff *skb);
+extern int tcp_init(void);
 #endif

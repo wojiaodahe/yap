@@ -3,11 +3,12 @@
 #include "kmalloc.h"
 #include "common.h"
 #include "pcb.h"
-#include "head.h"
 #include "blk.h"
 #include "ramfs.h"
 #include "ofs.h"
 #include "proc.h"
+#include "lib.h"
+#include "printk.h"
 
 extern int nand_init(void);
 extern int ramdisk_init(void);

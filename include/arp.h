@@ -39,6 +39,7 @@ extern void delete_arp_table(void);
 extern struct arp_table *search_arp_table(unsigned int ip);
 extern void add_skb_to_arp_send_q(struct sk_buff *skb);
 extern int arp_send_request(unsigned int ip, struct net_device *ndev);
+extern  void updata_arp_table(struct sk_buff *skb);
 
 #endif /* INCLUDE_ARP_H_ */
 

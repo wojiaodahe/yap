@@ -5,7 +5,7 @@
 #include "kmalloc.h"
 #include "common.h"
 #include "printk.h"
-#include "head.h"
+#include "lib.h"
 
 int ofs_open(struct inode *inode, struct file *filp)
 {

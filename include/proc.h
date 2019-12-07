@@ -22,12 +22,17 @@ extern void OS_Sched(void);
 extern void process_sleep(unsigned int sec);
 extern void process_msleep(unsigned int m);
 extern void panic(void);
+extern unsigned int OS_Get_Kernel_Ticks(void);
+extern void OS_Clock_Tick(void *arg);
+extern int OS_Init(void);
+extern void OS_Start(void);
 
 
 #define MAX_SCHEDULE_TIMEOUT 0xfffffff
 
-void set_current_state(unsigned int state);
-void set_task_state(void *task, unsigned int state);
+extern void set_current_state(unsigned int state);
+extern void set_task_state(void *task, unsigned int state);
+extern int kernel_thread_prio(int (*f)(void *), void *args, unsigned int prio);
 
 #endif
 

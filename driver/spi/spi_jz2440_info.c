@@ -13,5 +13,5 @@ struct spi_board_info spi_info_jz2440[] =
 
 void spi_info_jz2440_init(void)
 {
-    spi_register_board_info(&spi_info_jz2440, 1);
+    spi_register_board_info(spi_info_jz2440, 1);
 }

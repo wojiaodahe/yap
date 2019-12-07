@@ -139,13 +139,12 @@ int ip_do_recv(struct sk_buff *skb)
 		return udp_process(skb);
 	case PROTO_TCP:
         return tcp_process(skb);
-		break;
 	default:
 		free_skbuff(skb);
         return -EPROTONOSUPPORT;
 	}
 
-	return 0;
+	//return 0;
 }
 
 int ip_fragment_glue(struct ipfrag *frag_head)
@@ -192,7 +191,7 @@ int ip_try_fragment_glue(struct sk_buff *skb)
     if (!skb)
         return 0;
 
-    iph = skb->data_buf + OFFSET_IPHDR;
+    iph = (struct iphdr *)(skb->data_buf + OFFSET_IPHDR);
 
     frag_off  = ntohs(iph->frag_off);
 

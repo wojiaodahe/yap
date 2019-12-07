@@ -11,5 +11,7 @@ void assertion_failure(char *exp, char *file, char *base_file, int line);
 #define assert(exp)
 #endif
 
+void check_addr(void *addr);
+
 #endif 
 

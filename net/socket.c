@@ -1,4 +1,5 @@
 #include "socket.h"
+#include "interrupt.h"
 #include "error.h"
 #include "fs.h"
 #include "common.h"
@@ -12,12 +13,7 @@ extern int inet_family_init(void);
 extern struct file *get_empty_filp(void);
 extern struct inode *get_empty_inode(void);
 
-
-
-#define SO_ACCEPTCON	(1<<16)
-
 extern struct pcb *current;
-
 static struct socket sockets[MAX_SOCKETS];
 static struct family_ops *family_ops[MAX_PROTO];
 
@@ -178,8 +174,7 @@ static int sock_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
 	return sock->ops->ioctl(sock, cmd, arg);
 }
 
-
-static void sok_release(struct socket *sock)
+static void sock_release(struct socket *sock)
 {
 
 }
@@ -203,7 +198,7 @@ void sock_close(struct inode *inode, struct file *file)
 		sock->ops->close(sock, peersock);
 	
 	sock->state = SS_FREE;
-	//  kn_release(sock);
+    sock_release(sock);
 }
 
 
@@ -429,7 +424,7 @@ int sys_accept(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen)
 	//	return ret;
 	//}
 
-	ret = newsock->ops->accept(sock, newsock, file->f_flags);
+	ret = newsock->ops->accept(sock, newsock, upeer_addrlen);
 	if (ret < 0)
 	{
 		sock_free(newsock);

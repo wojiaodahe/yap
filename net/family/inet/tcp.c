@@ -1,7 +1,6 @@
 #include "inet_socket.h"
 #include "error.h"
 #include "fs.h"
-#include "head.h"
 #include "list.h"
 #include "socket.h"
 #include "wait.h"
@@ -16,6 +15,17 @@
 #include "syslib.h"
 #include "kmalloc.h"
 #include "interrupt.h"
+#include "proc.h"
+
+unsigned int tcp_generate_a_seq(void);
+int tcp_send_fin(struct i_socket *isk, unsigned int seq, unsigned int ack_seq);
+int tcp_send_syn(struct i_socket *isk);
+int tcp_send_ack(struct i_socket *isk, struct tcphdr *tcph, \
+                  unsigned int seq, unsigned int ack_seq, int syn, int fin, unsigned char now);
+void tcp_build_header(struct sk_buff *skb, struct i_socket *isk, unsigned short source, \
+                      unsigned short dest, unsigned int seq, unsigned ack_seq, int ack, int syn, int fin);
+void tcp_build_options(struct sk_buff *skb, int if_mss, int mss, int if_ts, int if_sack, \
+                          int if_wscale, int wacale, unsigned int tstamp, unsigned int ts_recent);
 
 
 static struct list_head active_queue;
@@ -550,7 +560,6 @@ void tcp_build_header(struct sk_buff *skb, struct i_socket *isk, unsigned short 
                       unsigned short dest, unsigned int seq, unsigned ack_seq, int ack, int syn, int fin)
 {
     struct tcphdr *tcp;
-    int doff;
 
     if (!skb || !isk)
         return;
@@ -569,9 +578,6 @@ void tcp_build_header(struct sk_buff *skb, struct i_socket *isk, unsigned short 
 
 int tcp_output(struct i_socket *isk, struct sk_buff *skb)
 {
-    static int times = 0;
-
-
     return 0;
 }
 
@@ -581,7 +587,6 @@ int tcp_send_ack(struct i_socket *isk, struct tcphdr *tcph, \
     struct sk_buff *skb;
     struct tcphdr *tcp;
     struct ip_addr dest;
-    struct net_device *ndev;
     struct ip_addr src;
 
     if (!isk || !tcph)
@@ -1336,13 +1341,13 @@ int tcp_send(struct i_socket *isk, char *buf, int len, int nonblock, unsigned fl
     return tcp_do_segment(isk, buf, len);
 }
 
-int tcp_accept(struct i_socket *isk, struct sockaddr_in *sin, int *addrlen)
+struct i_socket *tcp_accept(struct i_socket *isk, int flags)
 {
     struct i_socket *new_isk;
 
     new_isk = alloc_isocket();
     if (!new_isk)
-        return -EAGAIN;
+        return NULL;
 
     new_isk->prot_type      = isk->prot_type;
     new_isk->prot           = isk->prot;
@@ -1385,5 +1390,5 @@ int tcp_init(void)
     INIT_LIST_HEAD(&listen_queue);
     INIT_LIST_HEAD(&wait_queue);
     
-    return inet_register_proto(&tcp_opt);
+    return inet_register_proto(tcp_opt);
 }

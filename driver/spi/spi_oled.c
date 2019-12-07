@@ -1,12 +1,13 @@
 #include "spi.h"
 #include "fs.h"
 #include "chr.h"
+#include "lib.h"
 #include "kmalloc.h"
 #include "s3c24xx.h"
 #include "error.h"
 
 static int major = 30;
-static struct class *class;
+//static struct class *class;
 
 static int spi_oled_dc_pin;
 static struct spi_device *spi_oled_dev;
@@ -146,16 +147,14 @@ int oled_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigne
 
 int oled_write(struct inode *inode, struct file *file, char *buf, int count)
 {
-    int ret;
-    
     if (count > 4096)
         return -EINVAL;
 
-    ret = memcpy(ker_buf, buf, count);
+    memcpy(ker_buf, buf, count);
     OLED_Set_DC(1); /* data */
     spi_write(spi_oled_dev, ker_buf, count);
     
-    return ret;
+    return count;
 }
 
 
