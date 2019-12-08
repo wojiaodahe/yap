@@ -7,7 +7,7 @@
 #include "completion.h"
 #include "printk.h"
 #include "kmalloc.h"
-#include "syslib.h"
+#include "lib.h"
 
 static struct list_head spi_master_list;
 static struct list_head spi_board_list;

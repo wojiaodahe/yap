@@ -1,6 +1,7 @@
 #ifndef __INTERRUPT_H__
 #define __INTERRUPT_H__
 
+#include "arch.h"
 #include "wait.h"
 
 #define MAX_IRQ_NUMBER      64
@@ -48,6 +49,26 @@ struct irq_desc
 
 #define local_irq_disable() kernel_disable_irq()
 #define local_irq_enable()  kernel_enable_irq()
+
+#define raw_local_irq_save(flags)\
+    do {\
+        flags = arch_local_irq_save();\
+    } while (0);
+
+#define raw_local_irq_restore(flags)\
+    do {\
+        arch_local_irq_restore(flags);\
+    } while (0);
+
+#define local_irq_save(flags)\
+    do {\
+        raw_local_irq_save(flags);\
+    } while (0);
+
+#define local_irq_restore(flags) \
+    do {\
+        raw_local_irq_restore(flags);\
+    } while (0);
 
 extern int setup_irq_handler(unsigned int , irq_server, void *);
 extern void kernel_enable_irq(void);

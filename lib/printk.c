@@ -1,6 +1,6 @@
 #include "common.h"
 #include "printk.h"
-#include "syslib.h"
+#include "lib.h"
 #include "tty.h"
 
 const char *hexstr = "0123456789abcdef";

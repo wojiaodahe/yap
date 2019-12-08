@@ -1,6 +1,6 @@
 #include "kmalloc.h"
 #include "common.h"
-#include "syslib.h"
+#include "lib.h"
 #include "printk.h"
 #include "assert.h"
 

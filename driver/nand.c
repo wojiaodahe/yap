@@ -9,7 +9,7 @@
 #include "ofs.h"
 #include "common.h"
 #include "printk.h"
-#include "syslib.h"
+#include "lib.h"
 #include "kmalloc.h"
 
 

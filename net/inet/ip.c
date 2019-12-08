@@ -9,7 +9,7 @@
 #include "netdevice.h"
 #include "inet.h"
 #include "printk.h"
-#include "syslib.h"
+#include "lib.h"
 #include "timer.h"
 
 static unsigned short ip_data_id = 1000;

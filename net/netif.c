@@ -6,7 +6,7 @@
 #include "socket.h"
 #include "inet.h"
 #include "printk.h"
-#include "syslib.h"
+#include "lib.h"
 #include "wait.h"
 #include "bitops.h"
 #include "assert.h"

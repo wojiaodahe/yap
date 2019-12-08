@@ -4,8 +4,8 @@
 
 #define SKB_USE_SKB_POOL	1
 
-#define MTU	1600
-#define MAX_SKB_NUM	1000
+#define MTU	1518
+#define MAX_SKB_NUM	5000
 
 #define SKB_NO_USE	0
 #define SKB_USED	1

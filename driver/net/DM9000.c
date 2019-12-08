@@ -1,11 +1,11 @@
-#include "dm9000.h"
+#include "DM9000.h"
 #include "s3c24xx.h"
 #include "kernel.h"
 #include "common.h"
 #include "netdevice.h"
 #include "socket.h"
 #include "printk.h"
-#include "syslib.h"
+#include "lib.h"
 #include "interrupt.h"
 
 void dm9000_tx_done(struct net_device *ndev);

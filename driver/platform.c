@@ -3,7 +3,7 @@
 #include "list.h"
 #include "platform.h"
 #include "common.h"
-#include "syslib.h"
+#include "lib.h"
 #include "kmalloc.h"
 
 #define to_platform_driver(drv) container_of((drv), struct platform_driver, driver)

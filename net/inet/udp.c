@@ -10,7 +10,7 @@
 #include "common.h"
 #include "inet.h"
 #include "printk.h"
-#include "syslib.h"
+#include "lib.h"
 #include "inet.h"
 
 static struct list_head udp_queue;
@@ -253,7 +253,7 @@ int udp_process(struct sk_buff *skb)
 	return udp_recv_callback(skb);
 }
 
-struct i_proto_opt udp_opt[] =
+struct i_proto_opt udp_opt =
 {
     SOCK_DGRAM,
 	NULL,
@@ -274,5 +274,5 @@ int udp_init(void)
 {
     INIT_LIST_HEAD(&udp_queue);
 
-    return inet_register_proto(udp_opt);
+    return inet_register_proto(&udp_opt);
 }

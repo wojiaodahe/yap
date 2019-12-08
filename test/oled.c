@@ -7,7 +7,6 @@
 #include "fcntl.h"
 #include "wait.h"
 #include "socket.h"
-#include "inet_socket.h"
 #include "timer.h"
 #include "completion.h"
 #include "printk.h"

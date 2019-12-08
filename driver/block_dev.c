@@ -4,7 +4,7 @@
 #include "error.h"
 #include "kmalloc.h"
 #include "common.h"
-#include "syslib.h"
+#include "lib.h"
 
 #define SYSTEM_DEFAULT_SECTOR_SIZE		512
 

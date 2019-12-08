@@ -8,7 +8,7 @@
 #include "proc.h"
 #include "wait.h"
 #include "timer.h"
-#include "syslib.h"
+#include "lib.h"
 #include "printk.h"
 #include "vfs.h"
 #include "syscall.h"
@@ -53,7 +53,7 @@ void *get_process_sp()
 
 unsigned int get_cpsr(void)
 {
-	unsigned int p;
+	unsigned long p;
 	
 	__asm
 	{
@@ -72,7 +72,8 @@ void thread_exit(void)
 }
 
 int kernel_thread(int (*f)(void *), void *args)
-{
+{ 
+    unsigned long flags;
 	unsigned int sp;
 	
 	pcb_t *pcb = (pcb_t *)alloc_pcb();
@@ -104,9 +105,14 @@ int kernel_thread(int (*f)(void *), void *args)
 	
 	DO_INIT_SP(pcb->sp, f, args, thread_exit, 0x1f & get_cpsr(), 0);
 
-	enter_critical();
-	pcb_list_add(&proc_list[pcb->prio].head, pcb);
-	exit_critical();
+//	enter_critical();
+    
+    local_irq_save(flags);
+
+    pcb_list_add(&proc_list[pcb->prio].head, pcb);
+    
+    local_irq_restore(flags);
+//  exit_critical();
 
 	return 0;
 }
@@ -727,7 +733,17 @@ int OS_Init(void)
 
 int proc2pid(pcb_t *proc)
 {
+#if 0
     return proc->pid;
+#else
+    enter_critical();
+    
+    printk("Uncomplete Function %s\n", __func__);
+   
+    panic();
+
+    return 0;
+#endif
 }
 
 pcb_t *pid2proc(int pid)

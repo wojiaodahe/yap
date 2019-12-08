@@ -6,7 +6,7 @@
 #include "proc.h"
 #include "pcb.h"
 #include "printk.h"
-#include "syslib.h"
+#include "lib.h"
 #include "kmalloc.h"
 
 extern int inet_family_init(void);

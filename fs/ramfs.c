@@ -4,7 +4,7 @@
 #include "blk.h"
 #include "kmalloc.h"
 #include "common.h"
-#include "syslib.h"
+#include "lib.h"
 
 
 int  ramfs_open   (struct inode *, struct file *);

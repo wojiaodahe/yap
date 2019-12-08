@@ -9,13 +9,13 @@
 #include "tcp.h"
 #include "inet.h"
 #include "printk.h"
-#include "syslib.h"
+#include "lib.h"
 #include "ip.h"
 #include "kernel.h"
-#include "syslib.h"
 #include "kmalloc.h"
 #include "interrupt.h"
 #include "proc.h"
+#include "inet.h"
 
 unsigned int tcp_generate_a_seq(void);
 int tcp_send_fin(struct i_socket *isk, unsigned int seq, unsigned int ack_seq);
@@ -628,7 +628,7 @@ int tcp_send_fin(struct i_socket *isk, unsigned int seq, unsigned int ack_seq)
 
 void tcp_set_options(struct i_socket *isk, struct sk_buff *skb)
 {
-    __packed unsigned char *ptr;
+    unsigned char *ptr;
     int opt_code  = 0;
     int opt_size = 0;
     int length = 0;
@@ -957,7 +957,7 @@ int tcp_urg_handler()
 
 void print_tcp(struct sk_buff *skb)
 {
-    __packed unsigned char *ptr;
+    unsigned char *ptr;
     int opt_code  = 0;
     int opt_size = 0;
     int length = 0;
@@ -1368,7 +1368,7 @@ struct i_socket *tcp_accept(struct i_socket *isk, int flags)
     return new_isk;
 }
 
-struct i_proto_opt tcp_opt[] =
+struct i_proto_opt tcp_opt =
 {
     SOCK_STREAM,
 	tcp_close,
@@ -1380,7 +1380,7 @@ struct i_proto_opt tcp_opt[] =
 	tcp_bind,
 	tcp_accept,
 	tcp_listen,
-	tcp_send,
+    tcp_send,
 	tcp_recv
 };
 
@@ -1390,5 +1390,5 @@ int tcp_init(void)
     INIT_LIST_HEAD(&listen_queue);
     INIT_LIST_HEAD(&wait_queue);
     
-    return inet_register_proto(tcp_opt);
+    return inet_register_proto(&tcp_opt);
 }

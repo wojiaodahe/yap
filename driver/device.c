@@ -3,7 +3,7 @@
 #include "error.h"
 #include "list.h"
 #include "printk.h"
-#include "syslib.h"
+#include "lib.h"
 
 static struct list_head bus_list_head;
 void bus_list_init(void)

@@ -381,6 +381,8 @@ int sys_unmount(char *dir_name)
 	return 0;
 }
 
+//!!!!!!!!!!!!!
+//WARNING! MAYBE BUGS!
 struct file *get_empty_filp()
 {
 	int i = 0;

@@ -1,7 +1,7 @@
 #include "message.h"
-#include "lib.h"
 #include "pcb.h"
 #include "assert.h"
+#include "lib.h"
 
 extern pcb_t *pid2proc(int);
 extern int proc2pid(pcb_t *proc);

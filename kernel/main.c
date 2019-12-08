@@ -4,6 +4,7 @@
 #include "kmalloc.h"
 #include "lib.h"
 #include "printk.h"
+#include "list.h"
 
 #include "unistd.h"
 #include "fcntl.h"

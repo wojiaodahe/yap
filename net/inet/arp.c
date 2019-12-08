@@ -6,7 +6,7 @@
 #include "ip.h"
 #include "inet.h"
 #include "printk.h"
-#include "syslib.h"
+#include "lib.h"
 
 
 void print_arp(	struct arp_hdr *arp)

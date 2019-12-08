@@ -3,7 +3,7 @@
 #include "error.h"
 #include "device.h"
 #include "common.h"
-#include "syslib.h"
+#include "lib.h"
 
 static struct chr_dev_struct chr_devs[NR_CHRDEV];
 

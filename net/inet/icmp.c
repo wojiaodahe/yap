@@ -7,7 +7,7 @@
 #include "netdevice.h"
 #include "inet.h"
 #include "printk.h"
-#include "syslib.h"
+#include "lib.h"
 
 void print_icmp(struct icmphdr *icmph)
 {
